@@ -1,0 +1,41 @@
+---
+import '../styles/globals.css'
+import { ClientRouter } from 'astro:transitions'
+
+interface Props {
+  title: string
+  description?: string
+  canonical?: string
+  robots?: string
+}
+
+const {
+  title,
+  description = 'CalParella, el calendario compartido para parejas. Organiza momentos juntos, guarda recuerdos y celebra fechas especiales en un espacio privado solo para dos.',
+  canonical,
+  robots,
+} = Astro.props
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+
+    <meta name="description" content={description} />
+    <meta name="author" content="ReyserLyn" />
+    {canonical && <link rel="canonical" href={canonical} />}
+    {robots && <meta name="robots" content={robots} />}
+
+    <ClientRouter />
+  </head>
+
+  <body>
+    <slot />
+  </body>
+</html>

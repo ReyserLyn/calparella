@@ -1,0 +1,27 @@
+[
+  {
+    "label": "dev",
+    "command": "bun run dev",
+    "tags": ["astro"],
+  },
+  {
+    "label": "build",
+    "command": "bun run build",
+    "tags": ["astro"],
+  },
+  {
+    "label": "lint",
+    "command": "bun run lint",
+    "tags": ["astro"],
+  },
+  {
+    "label": "format",
+    "command": "bun run format",
+    "tags": ["astro"],
+  },
+  {
+    "label": "validate",
+    "command": "bun run validate",
+    "tags": ["astro"],
+  },
+]

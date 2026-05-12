@@ -1,43 +1,47 @@
-# Astro Starter Kit: Minimal
+# CalParella Project
 
-```sh
-bun create astro@latest -- --template minimal
-```
+## ~Librerías~
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+- Astro 6
+- Drizzle
+- Better Auth
+- Motion
+- Cloudflare R2
+- Cloudflare D1
+- HugeIcons
+- Embla Carrusel
+- FontSource o Font API
 
-## 🚀 Project Structure
+## Despliegue
 
-Inside of your Astro project, you'll see the following folders and files:
+- Cloudflare Workers
 
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
-```
+## Requerimientos
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+- Debe haber Registro e inicio de sesión de usuarios
+- Casa usuario puede crear un calendario como máximo
+- Con un calendario creado, el dueño puede invitar a 1 usuario como administrador (Pareja) para poder editar
+- Cada calendario se puede separar con slug (url) para poder ser compartido
+- Cada calendario debe tener opción de hacerlo público ( cualquiera con el enlace puede verlo) o privado ( solo los administradores pueden verlo)
+- El calendario se puede eliminar como acción irreversible
+- Máximo 1 foto por mes en el calendario
+- La página debe tener el diseño rosado claro o rosado oscuro, ambos themes.
+- Usar Motion para animar SVG de corazones u otras decoraciónes
+- Usar Astro Middleware para permisos
+- Usar Astro Actions manipulando directamente cloudflare
+- Usar Astro API para Better Auth
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+## Notas de Programador
 
-Any static assets, like images, can be placed in the `public/` directory.
+- NO USAR REACT
+- Priorizar Javascript y typescript
+- El logo debe de ser ambos themes y letras principales "CA"
+- Debe de ser instalable como app a pesar de ser web
+- Diseño de Gris 3x4 con responsive
+- Buscar librería para tomar screenshots o generar imágenes del album para exportar, compartir
+- Buscar librería para decoraciones, similar a confeti
+- En git crear 2 ramas, una de producción y otra de dev
 
-## 🧞 Commands
+## Extras
 
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `bun install`             | Installs dependencies                            |
-| `bun dev`             | Starts local dev server at `localhost:4321`      |
-| `bun build`           | Build your production site to `./dist/`          |
-| `bun preview`         | Preview your build locally, before deploying     |
-| `bun astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `bun astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+- Investigar encriptación E2E de ente y estudiar si es necesario en la App o si es mucha complejidad para MVP

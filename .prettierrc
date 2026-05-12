@@ -1,0 +1,25 @@
+{
+  "$schema": "https://www.schemastore.org/prettierrc.json",
+
+  "plugins": ["prettier-plugin-astro", "prettier-plugin-tailwindcss"],
+  "tailwindStylesheet": "./src/styles/globals.css",
+
+  "overrides": [
+    {
+      "files": "*.astro",
+      "options": {
+        "parser": "astro"
+      }
+    },
+    {
+      "files": [".zed/*json", "tsconfig.json"],
+      "options": { "parser": "jsonc" }
+    }
+  ],
+  "printWidth": 100,
+  "semi": false,
+  "singleQuote": true,
+  "tabWidth": 2,
+  "trailingComma": "all",
+  "useTabs": false
+}

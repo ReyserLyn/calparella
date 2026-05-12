@@ -1,0 +1,34 @@
+import js from '@eslint/js'
+import tseslint from 'typescript-eslint'
+import eslintPluginAstro from 'eslint-plugin-astro'
+
+/** @type {import('eslint').Linter.Config[]} */
+export default [
+  // ── Core JavaScript recommended rules ──
+  js.configs.recommended,
+
+  // ── Astro recommended rules (handles .astro parsing + plugin registration) ──
+  ...eslintPluginAstro.configs.recommended,
+
+  // ── Accessibility rules adapted for Astro components ──
+  ...eslintPluginAstro.configs['jsx-a11y-recommended'],
+
+  // ── TypeScript recommended rules — scoped ONLY to .ts/.tsx files ──
+  ...tseslint.configs.recommended.map((config) => ({
+    ...config,
+    files: ['**/*.ts', '**/*.tsx', '**/*.mts', '**/*.cts'],
+  })),
+
+  // ── Global ignores ──
+  {
+    ignores: ['dist/**', '.astro/**', 'node_modules/**', '*.lock', '*.lockb'],
+  },
+
+  // ── Custom rule overrides ──
+  {
+    rules: {
+      // Allow console during dev/build — remove when going strictly prod
+      'no-console': 'off',
+    },
+  },
+]

@@ -1,7 +1,33 @@
 {
+  "format_on_save": "on",
+  "formatter": "prettier",
+  "auto_indent_on_paste": true,
+
   "languages": {
     "Astro": {
+      "formatter": "prettier",
       "language_servers": ["eslint", "..."],
+    },
+    "CSS": {
+      "language_servers": ["tailwindcss-intellisense-css", "!vscode-css-language-server", "..."],
+    },
+  },
+
+  "lsp": {
+    "tailwindcss-language-server": {
+      "settings": {
+        "includeLanguages": {
+          "astro": "html",
+        },
+        "experimental": {
+          "classRegex": [
+            "class=\"([^\"]*)\"",
+            "class='([^']*)'",
+            "class:list=\"{([^}]*)}\"",
+            "class:list='{([^}]*)}'",
+          ],
+        },
+      },
     },
   },
 }
