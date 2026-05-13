@@ -1,31 +1,121 @@
 ---
 import Logo from '@/components/branding/Logo.astro'
 import Button from '@/components/ui/Button.astro'
+import Avatar from '@/components/ui/avatar/Avatar.astro'
+import AvatarFallback from '@/components/ui/avatar/AvatarFallback.astro'
+import Icon from '@/components/ui/Icon.astro'
+import Calendar02Icon from '@hugeicons/core-free-icons/Calendar02Icon'
+import AddTeamIcon from '@hugeicons/core-free-icons/AddTeamIcon'
+import Settings01Icon from '@hugeicons/core-free-icons/Settings01Icon'
+import UserIcon from '@hugeicons/core-free-icons/UserIcon'
+import DropdownMenu from '@/components/ui/dropdown-menu/DropdownMenu.astro'
+import DropdownMenuTrigger from '@/components/ui/dropdown-menu/DropdownMenuTrigger.astro'
+import DropdownMenuContent from '@/components/ui/dropdown-menu/DropdownMenuContent.astro'
+import DropdownMenuItem from '@/components/ui/dropdown-menu/DropdownMenuItem.astro'
+import DropdownMenuSeparator from '@/components/ui/dropdown-menu/DropdownMenuSeparator.astro'
+import DropdownMenuLabel from '@/components/ui/dropdown-menu/DropdownMenuLabel.astro'
+import DropdownMenuGroup from '@/components/ui/dropdown-menu/DropdownMenuGroup.astro'
+import { env } from 'cloudflare:workers'
+import { eq } from 'drizzle-orm'
+import { calendarMembers } from '@/db/schema'
+import { createClient } from '@/db'
 
 const user = Astro.locals.user
+
+let hasCalendar = false
+if (user) {
+  try {
+    const db = createClient(env.DB)
+    const m = await db
+      .select({ id: calendarMembers.id })
+      .from(calendarMembers)
+      .where(eq(calendarMembers.userId, user.id))
+      .get()
+    hasCalendar = !!m
+  } catch {
+    /* ignore DB errors in header */
+  }
+}
 ---
 
 <header
-  class="justify-center/90 fixed top-0 z-50 mx-auto flex h-20 w-full items-center border-b bg-background select-none"
+  class="justify-center/90 fixed top-0 z-50 mx-auto flex h-20 w-full items-center border-b select-none"
 >
-  <div class="flex w-full items-center justify-between px-4 md:w-full">
+  <div class="mx-auto flex w-full max-w-7xl items-center justify-between px-4">
     <Logo iconSize={28} textSize="text-3xl" />
 
     <nav class="flex items-center gap-4">
       {
         user ? (
-          <a
-            href="/calendario"
-            class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            {user.name}
-          </a>
+          <DropdownMenu lockScroll={false}>
+            <DropdownMenuTrigger asChild>
+              <button class="flex cursor-pointer items-center gap-2 rounded-full px-2 py-1 text-sm transition-colors hover:bg-muted">
+                <Avatar size="sm">
+                  <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <span class="hidden text-sm font-medium md:inline">{user.name}</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" class="w-56">
+              <DropdownMenuLabel>
+                <div class="flex flex-col gap-0.5">
+                  <span class="text-sm font-medium">{user.name}</span>
+                  <span class="text-xs text-muted-foreground">{user.email}</span>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+
+              <DropdownMenuGroup>
+                <DropdownMenuItem>
+                  <a href="/calendario" class="inline-flex items-center gap-2">
+                    <Icon data={Calendar02Icon} size={14} /> Ver calendario
+                  </a>
+                </DropdownMenuItem>
+                {!hasCalendar && (
+                  <DropdownMenuItem>
+                    <a href="/calendario/nuevo" class="inline-flex items-center gap-2">
+                      <Icon data={AddTeamIcon} size={14} /> Crear calendario
+                    </a>
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuGroup>
+
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuItem disabled>
+                  <Icon data={UserIcon} size={14} />
+                  Editar perfil
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled>
+                  <Icon data={Settings01Icon} size={14} />
+                  Configuración
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" id="logout-button">
+                Cerrar sesión
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         ) : (
-          <Button as="a" href="/iniciar-sesion" data-astro-prefetch>
-            Iniciar sesión
+          <Button as="a" href="/iniciar-sesion">
+            {' '}
+            Iniciar sesión{' '}
           </Button>
         )
       }
     </nav>
   </div>
 </header>
+
+<script>
+  const logoutBtn = document.getElementById('logout-button')
+  logoutBtn?.addEventListener('click', () => {
+    import('@/lib/auth-client').then((m) => {
+      m.authClient.signOut().then(({ error }) => {
+        if (!error) window.location.href = '/'
+      })
+    })
+  })
+</script>

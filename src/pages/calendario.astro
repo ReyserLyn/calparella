@@ -5,7 +5,6 @@ import { env } from 'cloudflare:workers'
 import { eq } from 'drizzle-orm'
 import { calendars, calendarMembers } from '@/db/schema'
 import { createClient } from '@/db'
-import Button from '@/components/ui/Button.astro'
 
 if (!Astro.locals.user) {
   return Astro.redirect('/iniciar-sesion')
@@ -15,9 +14,7 @@ const user = Astro.locals.user
 const db = createClient(env.DB)
 
 const memberOf = await db
-  .select({
-    calendar: calendars,
-  })
+  .select({ calendar: calendars })
   .from(calendarMembers)
   .innerJoin(calendars, eq(calendarMembers.calendarId, calendars.id))
   .where(eq(calendarMembers.userId, user.id))
@@ -28,30 +25,41 @@ const calendar = memberOf?.calendar ?? null
 
 <Layout title="Calendario - CalParella">
   <Header />
-  <main class="mx-auto max-w-2xl px-4 pt-24">
+  <main class="mx-auto max-w-3xl px-4 pt-24">
     <section class="space-y-6">
       <div class="flex items-center gap-4">
         <div
-          class="font-cherry flex size-16 items-center justify-center rounded-full bg-primary/10 text-2xl font-bold text-primary"
+          class="font-cherry flex size-12 items-center justify-center rounded-full bg-primary/10 text-xl font-bold text-primary"
         >
           {user.name.charAt(0).toUpperCase()}
         </div>
         <div>
-          <h1 class="text-2xl font-bold">Bienvenido, {user.name}</h1>
+          <h1 class="text-xl font-semibold">{user.name}</h1>
           <p class="text-sm text-muted-foreground">{user.email}</p>
         </div>
       </div>
 
       {
         calendar ? (
-          <div class="rounded-lg border bg-background p-6">
-            <h2 class="mb-4 text-lg font-semibold">{calendar.name}</h2>
-            <p class="text-sm text-muted-foreground">
-              Calendario del año {calendar.year} — {calendar.isPublic ? 'Público' : 'Privado'}
-            </p>
+          <div class="rounded-lg border p-6">
+            <div class="flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-semibold">{calendar.name}</h2>
+                <p class="text-sm text-muted-foreground">
+                  {calendar.year} — {calendar.isPublic ? 'Público' : 'Privado'} —
+                  calparella.site/calendario/{calendar.slug}
+                </p>
+              </div>
+              <span class="rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
+                {calendar.isPublic ? '🌐 Público' : '🔒 Privado'}
+              </span>
+            </div>
+            <div class="mt-4 text-center text-sm text-muted-foreground">
+              El grid 3×4 estará disponible próximamente
+            </div>
           </div>
         ) : (
-          <div class="rounded-lg border bg-background p-6 text-center">
+          <div class="rounded-lg border p-6 text-center">
             <h2 class="mb-2 text-lg font-semibold">Todavía no tenés un calendario</h2>
             <p class="mb-4 text-sm text-muted-foreground">
               Creá uno nuevo para empezar a guardar recuerdos con tu pareja.
@@ -65,30 +73,6 @@ const calendar = memberOf?.calendar ?? null
           </div>
         )
       }
-
-      <Button id="logout-button">Cerrar sesión</Button>
     </section>
   </main>
 </Layout>
-
-<script>
-  import { authClient } from '@/lib/auth-client'
-
-  const logoutButton = document.getElementById('logout-button')
-
-  logoutButton?.addEventListener('click', async () => {
-    logoutButton.setAttribute('disabled', '')
-    logoutButton.textContent = 'Cerrando sesión…'
-
-    const { error } = await authClient.signOut()
-
-    if (!error) {
-      window.location.href = '/'
-      return
-    }
-
-    logoutButton.removeAttribute('disabled')
-    logoutButton.textContent = 'Cerrar sesión'
-    console.error('Logout error:', error)
-  })
-</script>
