@@ -36,6 +36,11 @@ export function createAuth(env?: Cloudflare.Env, ctx?: ExecutionContext, baseURL
       updateAge: 60 * 15,
     },
 
+    emailAndPassword: {
+      enabled: true,
+      autoSignIn: true,
+    },
+
     /**
      * Secondary storage y background tasks solo se activan en runtime
      * con bindings reales. El CLI no necesita esto.

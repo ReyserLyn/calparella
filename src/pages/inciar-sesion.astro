@@ -1,0 +1,251 @@
+---
+import Layout from '@/layouts/Layout.astro'
+import FieldGroup from '@/components/ui/field/FieldGroup.astro'
+import Field from '@/components/ui/field/Field.astro'
+import FieldLabel from '@/components/ui/field/FieldLabel.astro'
+import FieldDescription from '@/components/ui/field/FieldDescription.astro'
+import FieldError from '@/components/ui/field/FieldError.astro'
+import FieldSeparator from '@/components/ui/field/FieldSeparator.astro'
+import Input from '@/components/ui/Input.astro'
+import Button from '@/components/ui/Button.astro'
+import Logo from '@/components/branding/Logo.astro'
+import Icon from '@/components/ui/Icon.astro'
+import LoaderPinwheelIcon from '@hugeicons/core-free-icons/LoaderPinwheelIcon'
+import Login01Icon from '@hugeicons/core-free-icons/Login01Icon'
+import GoogleIcon from '@/assets/icons/google.svg'
+
+if (Astro.locals.user) {
+  return Astro.redirect('/calendario')
+}
+---
+
+<Layout title="Iniciar sesión - CalParella">
+  <div class="flex min-h-svh flex-col items-center justify-center bg-background p-6 md:p-10">
+    <div class="w-full max-w-sm">
+      <div class="flex flex-col gap-6">
+        <form id="login-form" method="POST" novalidate>
+          <FieldGroup>
+            <div class="flex flex-col items-center gap-3 text-center">
+              <Logo iconSize={40} textSize="text-4xl" class="mb-4" />
+              <h1 class="text-xl font-semibold tracking-tight text-primary">Iniciar sesión</h1>
+              <FieldDescription>
+                ¿No tenés cuenta?
+                <a href="/registro" class="text-primary underline-offset-4 hover:underline"
+                  >Registrate</a
+                >
+              </FieldDescription>
+            </div>
+
+            <Field id="field-email">
+              <FieldLabel for="email">Correo electrónico</FieldLabel>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="hola@example.com"
+                required
+                autocomplete="email"
+              />
+              <FieldError forceMount class="hidden" />
+            </Field>
+
+            <Field id="field-password">
+              <FieldLabel for="password">Contraseña</FieldLabel>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="••••••••"
+                required
+                autocomplete="current-password"
+              />
+              <FieldError forceMount class="hidden" />
+            </Field>
+
+            <div
+              id="error-message"
+              class="hidden rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+            >
+            </div>
+
+            <Field>
+              <Button type="submit" size="lg" class="w-full" id="submit-button">
+                <span class="inline-flex items-center gap-2">
+                  <span id="submit-icon"><Icon data={Login01Icon} size={16} /></span>
+                  <span id="submit-spinner" style="display:none"
+                    ><Icon data={LoaderPinwheelIcon} size={16} class="animate-spin" /></span
+                  >
+                  <span id="submit-text">Iniciar sesión</span>
+                </span>
+              </Button>
+            </Field>
+
+            <FieldSeparator>O continuá con</FieldSeparator>
+
+            <Field class="grid gap-4">
+              <Button variant="outline" type="button">
+                <GoogleIcon class="size-4 shrink-0" />
+                Google
+              </Button>
+            </Field>
+          </FieldGroup>
+        </form>
+
+        <p class="px-6 text-center text-sm text-balance text-muted-foreground">
+          Al continuar, aceptás nuestros
+          <a href="/terminos" class="text-primary underline-offset-4 hover:underline"
+            >Términos de Servicio</a
+          >
+          y <a href="/privacidad" class="text-primary underline-offset-4 hover:underline"
+            >Política de Privacidad</a
+          >.
+        </p>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import { z } from 'astro/zod'
+  import { authClient, translateError } from '@/lib/auth-client'
+
+  // ── Schema de validación (Zod 4) ──────────────────────────
+  const loginSchema = z.object({
+    email: z.email({ error: 'Ingresá un correo electrónico válido.' }),
+    password: z.string().min(1, { error: 'La contraseña es obligatoria.' }),
+  })
+
+  // ── Referencias DOM ─────────────────────────────────────
+  const form = document.getElementById('login-form')
+  const emailInput = document.getElementById('email')
+  const passwordInput = document.getElementById('password')
+  const fieldEmail = document.getElementById('field-email')
+  const fieldPassword = document.getElementById('field-password')
+  const submitButton = document.getElementById('submit-button')
+  const submitIcon = document.getElementById('submit-icon')
+  const submitText = document.getElementById('submit-text')
+  const spinner = document.getElementById('submit-spinner')
+  const errorMsg = document.getElementById('error-message')
+
+  const inputs = [emailInput, passwordInput]
+
+  type FieldId = 'email' | 'password'
+  const fieldMap: Record<FieldId, { input: HTMLElement | null; field: HTMLElement | null }> = {
+    email: { input: emailInput, field: fieldEmail },
+    password: { input: passwordInput, field: fieldPassword },
+  }
+
+  // ── Helpers ─────────────────────────────────────────────
+  function getFieldError(field: HTMLElement): HTMLElement | null {
+    return field.querySelector('[data-slot="field-error"]')
+  }
+
+  function setFieldError(fieldId: FieldId, message: string | null) {
+    const { input, field } = fieldMap[fieldId]
+    if (!field || !input) return
+
+    const errorEl = getFieldError(field)
+    if (!errorEl) return
+
+    if (message) {
+      input.setAttribute('aria-invalid', 'true')
+      field.dataset.invalid = 'true'
+      errorEl.textContent = message
+      errorEl.classList.remove('hidden')
+    } else {
+      input.removeAttribute('aria-invalid')
+      delete field.dataset.invalid
+      errorEl.textContent = ''
+      errorEl.classList.add('hidden')
+    }
+  }
+
+  function getFieldValue(id: string): string {
+    const el = document.getElementById(id) as HTMLInputElement | null
+    return el?.value?.trim() ?? ''
+  }
+
+  function validateField(fieldId: FieldId): string | null {
+    const value = getFieldValue(fieldId)
+    const result = loginSchema.shape[fieldId].safeParse(value)
+    if (!result.success) {
+      const message = result.error.issues[0]?.message || 'Valor inválido'
+      setFieldError(fieldId, message)
+      return message
+    }
+    setFieldError(fieldId, null)
+    return null
+  }
+
+  function validateAll(): boolean {
+    const errors = ['email', 'password'].map((id) => validateField(id as FieldId))
+    return errors.every((e) => e === null)
+  }
+
+  function resetFieldErrors() {
+    ;['email', 'password'].forEach((id) => setFieldError(id as FieldId, null))
+  }
+
+  // ── Eventos ─────────────────────────────────────────────
+  if (form && submitButton && submitIcon && submitText && spinner && errorMsg) {
+    // Re-validar al escribir si el campo ya estaba marcado como inválido
+    inputs.forEach((input) => {
+      input?.addEventListener('input', () => {
+        const id = input.id as FieldId
+        const entry = fieldMap[id]
+        if (!entry?.field) return
+        if ('invalid' in entry.field.dataset) {
+          validateField(id)
+        }
+      })
+    })
+
+    // Submit
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      errorMsg.classList.add('hidden')
+      errorMsg.textContent = ''
+
+      // Resetear errores visuales previos
+      resetFieldErrors()
+
+      // Validar todo antes de enviar
+      if (!validateAll()) return
+
+      // Loading state
+      submitButton.setAttribute('disabled', '')
+      if (submitIcon) submitIcon.style.display = 'none'
+      if (spinner) spinner.style.display = ''
+
+      const { error } = await authClient.signIn.email({
+        email: getFieldValue('email'),
+        password: getFieldValue('password'),
+      })
+
+      submitButton.removeAttribute('disabled')
+      if (submitIcon) submitIcon.style.display = ''
+      if (spinner) spinner.style.display = 'none'
+
+      if (!error) {
+        window.location.href = '/calendario'
+        return
+      }
+
+      // Mapear error del server a campo específico
+      const serverField =
+        error.code === 'INVALID_EMAIL' || error.code === 'USER_NOT_FOUND'
+          ? 'email'
+          : error.code === 'INVALID_PASSWORD'
+            ? 'password'
+            : null
+
+      if (serverField) {
+        setFieldError(serverField, translateError(error.code) || error.message || null)
+      } else {
+        errorMsg.textContent =
+          translateError(error.code) || error.message || 'Credenciales inválidas'
+        errorMsg.classList.remove('hidden')
+      }
+    })
+  }
+</script>

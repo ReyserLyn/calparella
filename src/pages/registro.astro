@@ -1,0 +1,276 @@
+---
+import Layout from '@/layouts/Layout.astro'
+import FieldGroup from '@/components/ui/field/FieldGroup.astro'
+import Field from '@/components/ui/field/Field.astro'
+import FieldLabel from '@/components/ui/field/FieldLabel.astro'
+import FieldDescription from '@/components/ui/field/FieldDescription.astro'
+import FieldError from '@/components/ui/field/FieldError.astro'
+import FieldSeparator from '@/components/ui/field/FieldSeparator.astro'
+import Input from '@/components/ui/Input.astro'
+import Button from '@/components/ui/Button.astro'
+import Logo from '@/components/branding/Logo.astro'
+import Icon from '@/components/ui/Icon.astro'
+import LoaderPinwheelIcon from '@hugeicons/core-free-icons/LoaderPinwheelIcon'
+import UserAdd01Icon from '@hugeicons/core-free-icons/UserAdd01Icon'
+import GoogleIcon from '@/assets/icons/google.svg'
+
+if (Astro.locals.user) {
+  return Astro.redirect('/calendario')
+}
+---
+
+<Layout title="Crear cuenta - CalParella">
+  <div class="flex min-h-svh flex-col items-center justify-center bg-background p-6 md:p-10">
+    <div class="w-full max-w-sm">
+      <div class="flex flex-col gap-6">
+        <form id="register-form" method="POST" novalidate>
+          <FieldGroup>
+            <div class="flex flex-col items-center gap-2 text-center">
+              <Logo iconSize={40} textSize="text-4xl" class="mb-4" />
+              <h1 class="text-xl font-semibold tracking-tight text-primary">Crear cuenta</h1>
+              <FieldDescription>
+                ¿Ya tenés cuenta?
+                <a href="/inciar-sesion" class="text-primary underline-offset-4 hover:underline"
+                  >Iniciá sesión</a
+                >
+              </FieldDescription>
+            </div>
+
+            <Field id="field-name">
+              <FieldLabel for="name">Nombre</FieldLabel>
+              <Input
+                id="name"
+                name="name"
+                type="text"
+                placeholder="Tu nombre"
+                required
+                autocomplete="name"
+              />
+              <FieldError forceMount class="hidden" />
+            </Field>
+
+            <Field id="field-email">
+              <FieldLabel for="email">Correo electrónico</FieldLabel>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="hola@example.com"
+                required
+                autocomplete="email"
+              />
+              <FieldError forceMount class="hidden" />
+            </Field>
+
+            <Field id="field-password">
+              <FieldLabel for="password">Contraseña</FieldLabel>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="••••••••"
+                required
+                autocomplete="new-password"
+              />
+              <FieldError forceMount class="hidden" />
+            </Field>
+
+            <div
+              id="error-message"
+              class="hidden rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+            >
+            </div>
+
+            <Field>
+              <Button type="submit" size="lg" class="w-full" id="submit-button">
+                <span class="inline-flex items-center gap-2">
+                  <span id="submit-icon"><Icon data={UserAdd01Icon} size={16} /></span>
+                  <span id="submit-spinner" style="display:none"
+                    ><Icon data={LoaderPinwheelIcon} size={16} class="animate-spin" /></span
+                  >
+                  <span id="submit-text">Crear cuenta</span>
+                </span>
+              </Button>
+            </Field>
+
+            <FieldSeparator>O registrate con</FieldSeparator>
+
+            <Field class="grid gap-4">
+              <Button variant="outline" type="button">
+                <GoogleIcon class="size-4 shrink-0" />
+                Google
+              </Button>
+            </Field>
+          </FieldGroup>
+        </form>
+
+        <p class="px-6 text-center text-sm text-balance text-muted-foreground">
+          Al registrarte, aceptás nuestros
+          <a href="/terminos" class="text-primary underline-offset-4 hover:underline"
+            >Términos de Servicio</a
+          >
+          y <a href="/privacidad" class="text-primary underline-offset-4 hover:underline"
+            >Política de Privacidad</a
+          >.
+        </p>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import { z } from 'astro/zod'
+  import { authClient, translateError } from '@/lib/auth-client'
+
+  // ── Schema de validación (Zod 4) ──────────────────────────
+  const registerSchema = z.object({
+    name: z
+      .string()
+      .min(2, { error: 'El nombre debe tener al menos 2 caracteres.' })
+      .max(100, { error: 'El nombre es demasiado largo.' }),
+    email: z.email({ error: 'Ingresá un correo electrónico válido.' }),
+    password: z
+      .string()
+      .min(8, { error: 'La contraseña debe tener al menos 8 caracteres.' })
+      .max(128, { error: 'La contraseña es demasiado larga.' }),
+  })
+
+  // ── Referencias DOM ─────────────────────────────────────
+  const form = document.getElementById('register-form')
+  const nameInput = document.getElementById('name')
+  const emailInput = document.getElementById('email')
+  const passwordInput = document.getElementById('password')
+  const fieldName = document.getElementById('field-name')
+  const fieldEmail = document.getElementById('field-email')
+  const fieldPassword = document.getElementById('field-password')
+  const submitButton = document.getElementById('submit-button')
+  const submitIcon = document.getElementById('submit-icon')
+  const submitText = document.getElementById('submit-text')
+  const spinner = document.getElementById('submit-spinner')
+  const errorMsg = document.getElementById('error-message')
+
+  const allInputs = [nameInput, emailInput, passwordInput]
+
+  type FieldId = 'name' | 'email' | 'password'
+  const fieldMap: Record<FieldId, { input: HTMLElement | null; field: HTMLElement | null }> = {
+    name: { input: nameInput, field: fieldName },
+    email: { input: emailInput, field: fieldEmail },
+    password: { input: passwordInput, field: fieldPassword },
+  }
+
+  // ── Helpers ─────────────────────────────────────────────
+  function getFieldError(field: HTMLElement): HTMLElement | null {
+    return field.querySelector('[data-slot="field-error"]')
+  }
+
+  function setFieldError(fieldId: FieldId, message: string | null) {
+    const { input, field } = fieldMap[fieldId]
+    if (!field || !input) return
+
+    const errorEl = getFieldError(field)
+    if (!errorEl) return
+
+    if (message) {
+      input.setAttribute('aria-invalid', 'true')
+      field.dataset.invalid = 'true'
+      errorEl.textContent = message
+      errorEl.classList.remove('hidden')
+    } else {
+      input.removeAttribute('aria-invalid')
+      delete field.dataset.invalid
+      errorEl.textContent = ''
+      errorEl.classList.add('hidden')
+    }
+  }
+
+  function getFieldValue(id: string): string {
+    const el = document.getElementById(id) as HTMLInputElement | null
+    return el?.value?.trim() ?? ''
+  }
+
+  function validateField(fieldId: FieldId): string | null {
+    const value = getFieldValue(fieldId)
+    const result = registerSchema.shape[fieldId].safeParse(value)
+    if (!result.success) {
+      const message = result.error.issues[0]?.message || 'Valor inválido'
+      setFieldError(fieldId, message)
+      return message
+    }
+    setFieldError(fieldId, null)
+    return null
+  }
+
+  function validateAll(): boolean {
+    const errors = (['name', 'email', 'password'] as FieldId[]).map(validateField)
+    return errors.every((e) => e === null)
+  }
+
+  function resetFieldErrors() {
+    ;(['name', 'email', 'password'] as FieldId[]).forEach((id) => setFieldError(id, null))
+  }
+
+  // ── Eventos ─────────────────────────────────────────────
+  if (form && submitButton && submitIcon && submitText && spinner && errorMsg) {
+    // Re-validar al escribir si el campo ya estaba marcado como inválido
+    allInputs.forEach((input) => {
+      input?.addEventListener('input', () => {
+        const id = input.id as FieldId
+        const entry = fieldMap[id]
+        if (!entry?.field) return
+        if ('invalid' in entry.field.dataset) {
+          validateField(id)
+        }
+      })
+    })
+
+    // Submit
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      errorMsg.classList.add('hidden')
+      errorMsg.textContent = ''
+      resetFieldErrors()
+
+      if (!validateAll()) return
+
+      submitButton.setAttribute('disabled', '')
+      if (submitIcon) submitIcon.style.display = 'none'
+      if (spinner) spinner.style.display = ''
+
+      const { error } = await authClient.signUp.email({
+        name: getFieldValue('name'),
+        email: getFieldValue('email'),
+        password: getFieldValue('password'),
+      })
+
+      submitButton.removeAttribute('disabled')
+      if (submitIcon) submitIcon.style.display = ''
+      if (spinner) spinner.style.display = 'none'
+
+      if (!error) {
+        ;(form as HTMLFormElement).reset()
+        window.location.href = '/calendario'
+        return
+      }
+
+      // Mapear error del server a campo
+      const serverField =
+        error.code === 'INVALID_EMAIL' ||
+        error.code === 'USER_ALREADY_EXISTS' ||
+        error.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL'
+          ? 'email'
+          : error.code === 'INVALID_PASSWORD' ||
+              error.code === 'PASSWORD_TOO_SHORT' ||
+              error.code === 'PASSWORD_TOO_LONG'
+            ? 'password'
+            : null
+
+      if (serverField) {
+        setFieldError(serverField, translateError(error.code) || error.message || null)
+      } else {
+        errorMsg.textContent =
+          translateError(error.code) || error.message || 'Error al crear la cuenta'
+        errorMsg.classList.remove('hidden')
+      }
+    })
+  }
+</script>

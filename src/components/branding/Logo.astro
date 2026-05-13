@@ -1,0 +1,23 @@
+---
+import { cn } from '@/lib/utils'
+import Icon from '@/components/ui/Icon.astro'
+import CalendarLove01Icon from '@hugeicons/core-free-icons/CalendarLove01Icon'
+
+interface Props {
+  iconSize?: number
+  textSize?: string
+  class?: string
+}
+
+const { iconSize = 32, textSize = 'text-4xl', class: className } = Astro.props
+---
+
+<a
+  href="/"
+  class={cn('inline-flex items-center gap-2', className)}
+  aria-label="CalParella — ir al inicio"
+>
+  <Icon data={CalendarLove01Icon} size={iconSize} class="shrink-0 text-primary" />
+  <span class={cn('font-cherry tracking-tight text-primary select-none', textSize)}>CalParella</span
+  >
+</a>

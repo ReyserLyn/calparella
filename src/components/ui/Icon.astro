@@ -1,0 +1,42 @@
+---
+import { cn } from '@/lib/utils'
+
+/**
+ * Tupla de elemento SVG: ["path", { d: "...", stroke: "currentColor", ... }]
+ */
+type SVGElementTuple = [tag: 'path' | 'circle', attrs: Record<string, string>]
+
+interface Props {
+  /** Datos del icono importado de @hugeicons/core-free-icons */
+  data: SVGElementTuple[]
+  size?: number
+  class?: string
+}
+
+const { data, size = 24, class: className } = Astro.props
+
+/**
+ * Convierte las tuplas del icono en un string SVG inline.
+ * Filtramos `key` porque es solo para React.
+ */
+const elements = data
+  .map(([tag, attrs]) => {
+    const attrStr = Object.entries(attrs)
+      .filter(([k]) => k !== 'key')
+      .map(([k, v]) => `${k}="${v}"`)
+      .join(' ')
+    return `<${tag} ${attrStr} />`
+  })
+  .join('')
+---
+
+<svg
+  viewBox="0 0 24 24"
+  class={cn('shrink-0', className)}
+  width={size}
+  height={size}
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.5"
+  set:html={elements}
+/>

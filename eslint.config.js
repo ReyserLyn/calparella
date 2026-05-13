@@ -31,4 +31,12 @@ export default [
       'no-console': 'off',
     },
   },
+
+  // ── Astro slots can't be statically analyzed for a11y ──
+  {
+    files: ['**/*.astro'],
+    rules: {
+      'astro/jsx-a11y/label-has-associated-control': 'off',
+    },
+  },
 ]

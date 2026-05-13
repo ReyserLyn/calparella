@@ -1,0 +1,61 @@
+---
+import Button from '@/components/ui/Button.astro'
+import Layout from '@/layouts/Layout.astro'
+import Header from '@/sections/header.astro'
+
+if (!Astro.locals.user) {
+  return Astro.redirect('/inciar-sesion')
+}
+
+const user = Astro.locals.user
+---
+
+<Layout title="Calendario - CalParella">
+  <Header />
+  <main class="mx-auto mt-24 max-w-2xl px-4">
+    <section class="space-y-6">
+      <div class="flex items-center gap-4">
+        <div
+          class="font-cherry flex size-16 items-center justify-center rounded-full bg-primary/10 text-2xl font-bold text-primary"
+        >
+          {user.name.charAt(0).toUpperCase()}
+        </div>
+        <div>
+          <h1 class="text-2xl font-bold">Bienvenido, {user.name}</h1>
+          <p class="text-sm text-muted-foreground">{user.email}</p>
+        </div>
+      </div>
+
+      <div class="rounded-lg border p-6">
+        <h2 class="mb-4 text-lg font-semibold">Tu calendario</h2>
+        <p class="text-sm text-muted-foreground">
+          Todavía no tenés un calendario. ¡Creá uno nuevo para empezar!
+        </p>
+      </div>
+
+      <Button id="logout-button"> Cerrar sesión </Button>
+    </section>
+  </main>
+</Layout>
+
+<script>
+  import { authClient } from '@/lib/auth-client'
+
+  const logoutButton = document.getElementById('logout-button')
+
+  logoutButton?.addEventListener('click', async () => {
+    logoutButton.setAttribute('disabled', '')
+    logoutButton.textContent = 'Cerrando sesión…'
+
+    const { error } = await authClient.signOut()
+
+    if (!error) {
+      window.location.href = '/'
+      return
+    }
+
+    logoutButton.removeAttribute('disabled')
+    logoutButton.textContent = 'Cerrar sesión'
+    console.error('Logout error:', error)
+  })
+</script>
