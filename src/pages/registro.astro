@@ -30,8 +30,10 @@ if (Astro.locals.user) {
               <h1 class="text-xl font-semibold tracking-tight text-primary">Crear cuenta</h1>
               <FieldDescription>
                 ¿Ya tenés cuenta?
-                <a href="/inciar-sesion" class="text-primary underline-offset-4 hover:underline"
-                  >Iniciá sesión</a
+                <a
+                  href="/iniciar-sesion"
+                  data-astro-prefetch
+                  class="text-primary underline-offset-4 hover:underline">Iniciá sesión</a
                 >
               </FieldDescription>
             </div>
@@ -106,11 +108,15 @@ if (Astro.locals.user) {
 
         <p class="px-6 text-center text-sm text-balance text-muted-foreground">
           Al registrarte, aceptás nuestros
-          <a href="/terminos" class="text-primary underline-offset-4 hover:underline"
-            >Términos de Servicio</a
+          <a
+            href="/terminos"
+            data-astro-prefetch
+            class="text-primary underline-offset-4 hover:underline">Términos de Servicio</a
           >
-          y <a href="/privacidad" class="text-primary underline-offset-4 hover:underline"
-            >Política de Privacidad</a
+          y <a
+            href="/privacidad"
+            data-astro-prefetch
+            class="text-primary underline-offset-4 hover:underline">Política de Privacidad</a
           >.
         </p>
       </div>

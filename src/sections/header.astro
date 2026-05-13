@@ -21,7 +21,7 @@ const user = Astro.locals.user
             {user.name}
           </a>
         ) : (
-          <Button as="a" href="/inciar-sesion">
+          <Button as="a" href="/iniciar-sesion" data-astro-prefetch>
             Iniciar sesión
           </Button>
         )

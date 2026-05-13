@@ -4,7 +4,7 @@ import Layout from '@/layouts/Layout.astro'
 import Header from '@/sections/header.astro'
 
 if (!Astro.locals.user) {
-  return Astro.redirect('/inciar-sesion')
+  return Astro.redirect('/iniciar-sesion')
 }
 
 const user = Astro.locals.user
