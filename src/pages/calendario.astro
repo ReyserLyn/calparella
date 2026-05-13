@@ -1,6 +1,7 @@
 ---
 import Layout from '@/layouts/Layout.astro'
 import Header from '@/sections/header.astro'
+import CalendarGrid from '@/components/calendario/CalendarGrid.astro'
 import { env } from 'cloudflare:workers'
 import { eq } from 'drizzle-orm'
 import { calendars, calendarMembers } from '@/db/schema'
@@ -25,7 +26,7 @@ const calendar = memberOf?.calendar ?? null
 
 <Layout title="Calendario - CalParella">
   <Header />
-  <main class="mx-auto max-w-3xl px-4 pt-24">
+  <main class="mx-auto max-w-5xl px-4 pt-24">
     <section class="space-y-6">
       <div class="flex items-center gap-4">
         <div
@@ -41,8 +42,8 @@ const calendar = memberOf?.calendar ?? null
 
       {
         calendar ? (
-          <div class="rounded-lg border p-6">
-            <div class="flex items-center justify-between">
+          <div>
+            <div class="mb-6 flex items-center justify-between">
               <div>
                 <h2 class="text-lg font-semibold">{calendar.name}</h2>
                 <p class="text-sm text-muted-foreground">
@@ -54,9 +55,7 @@ const calendar = memberOf?.calendar ?? null
                 {calendar.isPublic ? '🌐 Público' : '🔒 Privado'}
               </span>
             </div>
-            <div class="mt-4 text-center text-sm text-muted-foreground">
-              El grid 3×4 estará disponible próximamente
-            </div>
+            <CalendarGrid year={calendar.year} />
           </div>
         ) : (
           <div class="rounded-lg border p-6 text-center">

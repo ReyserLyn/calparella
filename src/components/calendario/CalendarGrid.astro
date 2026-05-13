@@ -1,0 +1,32 @@
+---
+import MonthCard from './MonthCard.astro'
+import { cn } from '@/lib/utils'
+import eneroImg from '@/assets/images/enero.webp'
+
+interface Props {
+  year: number
+  class?: string
+}
+
+const { year, class: className } = Astro.props
+const months = Array.from({ length: 12 }, (_, i) => i + 1)
+
+// TODO: reemplazar con datos reales de la DB
+const photoMap: Record<number, { url?: string; day?: number }> = {
+  1: { url: eneroImg.src, day: 14 },
+  3: { url: eneroImg.src, day: 14 },
+}
+---
+
+<div class={cn('grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3', className)}>
+  {
+    months.map((month) => (
+      <MonthCard
+        month={month}
+        year={year}
+        photoUrl={photoMap[month]?.url}
+        photoDay={photoMap[month]?.day}
+      />
+    ))
+  }
+</div>

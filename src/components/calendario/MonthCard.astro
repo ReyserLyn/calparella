@@ -1,0 +1,107 @@
+---
+import { cn } from '@/lib/utils'
+
+interface Props {
+  month: number
+  year: number
+  photoUrl?: string
+  photoDay?: number
+  class?: string
+}
+
+const { month, year, photoUrl, photoDay, class: className } = Astro.props
+
+const monthNames = [
+  'ENE',
+  'FEB',
+  'MAR',
+  'ABR',
+  'MAY',
+  'JUN',
+  'JUL',
+  'AGO',
+  'SEP',
+  'OCT',
+  'NOV',
+  'DIC',
+]
+const monthName = monthNames[month - 1]
+const daysInMonth = new Date(year, month, 0).getDate()
+const firstDayOfWeek = new Date(year, month - 1, 1).getDay()
+const startOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1
+const dayHeaders = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+
+const days: (number | null)[] = []
+for (let i = 0; i < startOffset; i++) days.push(null)
+for (let i = 1; i <= daysInMonth; i++) days.push(i)
+
+// Normalizar a 6 filas × 7 columnas para altura uniforme
+const normalized: (number | null)[] = []
+const maxRows = 6
+const cols = 7
+for (let row = 0; row < maxRows; row++) {
+  for (let col = 0; col < cols; col++) {
+    const idx = row * cols + col
+    normalized.push(days[idx] ?? null)
+  }
+}
+---
+
+<article
+  class={cn(
+    'group/card flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:shadow-md',
+    className,
+  )}
+>
+  <div class="relative aspect-4/3 w-full overflow-hidden bg-muted">
+    {
+      photoUrl ? (
+        <img
+          src={photoUrl}
+          alt={`${monthName} ${year}`}
+          class="size-full object-cover"
+          loading="lazy"
+        />
+      ) : (
+        <div class="flex size-full items-center justify-center bg-muted">
+          <span class="text-5xl text-muted-foreground/30 select-none">{monthName}</span>
+        </div>
+      )
+    }
+  </div>
+
+  <div class="flex items-stretch gap-2 border-t border-border bg-background/50 px-3 py-2">
+    <div class="flex shrink-0 flex-col items-center justify-center">
+      <span class="font-cherry text-5xl leading-none tracking-tight text-primary">{monthName}</span>
+      <span class="text-xs text-muted-foreground">{year}</span>
+    </div>
+
+    <div class="flex-1 overflow-hidden">
+      <div class="grid grid-cols-7 text-center text-[11px]">
+        {
+          dayHeaders.map((d) => (
+            <div class="pb-0.5 text-[11px] font-medium text-muted-foreground">{d}</div>
+          ))
+        }
+        {
+          normalized.map((day) => (
+            <div
+              class={cn(
+                'flex items-center justify-center leading-none',
+                'h-5.5 w-full text-[11px]',
+              )}
+            >
+              {day === photoDay ? (
+                <span class="text-[16px] leading-none" title={`Foto subida el ${day}`}>
+                  💕
+                </span>
+              ) : day != null ? (
+                <span class="text-foreground">{day}</span>
+              ) : null}
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </div>
+</article>
