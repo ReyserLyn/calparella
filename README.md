@@ -1,47 +1,60 @@
-# CalParella Project
+# CalParella
 
-## ~Librerías~
+Calendario compartido para parejas. Una foto por mes, un recuerdo por año.
 
-- Astro 6
-- Drizzle
-- Better Auth
-- Motion
-- Cloudflare R2
-- Cloudflare D1
-- HugeIcons
-- Embla Carrusel
-- FontSource o Font API
+## Stack
 
-## Despliegue
+- **Runtime:** Astro 6 + Cloudflare Workers
+- **Auth:** Better Auth (email/password + Google)
+- **DB:** Cloudflare D1 + Drizzle ORM
+- **Storage:** R2 (fotos mensuales)
+- **Cache/Sessions:** KV (namespace SESSION)
+- **Estilos:** Tailwind v4 (OKLCH, dark/light)
+- **Iconos:** HugeIcons
+- **Animaciones:** Motion
+- **Carrusel:** Embla
 
-- Cloudflare Workers
+## Features
 
-## Requerimientos
+### Auth
 
-- Debe haber Registro e inicio de sesión de usuarios
-- Casa usuario puede crear un calendario como máximo
-- Con un calendario creado, el dueño puede invitar a 1 usuario como administrador (Pareja) para poder editar
-- Cada calendario se puede separar con slug (url) para poder ser compartido
-- Cada calendario debe tener opción de hacerlo público ( cualquiera con el enlace puede verlo) o privado ( solo los administradores pueden verlo)
-- El calendario se puede eliminar como acción irreversible
-- Máximo 1 foto por mes en el calendario
-- La página debe tener el diseño rosado claro o rosado oscuro, ambos themes.
-- Usar Motion para animar SVG de corazones u otras decoraciónes
-- Usar Astro Middleware para permisos
-- Usar Astro Actions manipulando directamente cloudflare
-- Usar Astro API para Better Auth
+- Registro e inicio de sesión con email y contraseña
+- Google OAuth (próximamente)
 
-## Notas de Programador
+### Calendario (core)
 
-- NO USAR REACT
-- Priorizar Javascript y typescript
-- El logo debe de ser ambos themes y letras principales "CA"
-- Debe de ser instalable como app a pesar de ser web
-- Diseño de Gris 3x4 con responsive
-- Buscar librería para tomar screenshots o generar imágenes del album para exportar, compartir
-- Buscar librería para decoraciones, similar a confeti
-- En git crear 2 ramas, una de producción y otra de dev
+- **1 calendario por pareja.** Un usuario puede crear o pertenecer a máximo un calendario.
+- **Slug personalizable.** Se sugiere automáticamente basado en los nombres (ej. `reyser-y-marilyn`). Si existe duplicado, se añade sufijo numérico (`-1`, `-2`). El usuario puede cambiarlo cuando quiera, siempre único.
+- **Público o privado.** Público: cualquiera con el enlace puede ver el calendario y los nombres. Privado: solo los administradores.
+- **Invitación de pareja.** El dueño invita a 1 usuario como administrador (pareja) para co-editar.
+- **1 foto por mes.** Una foto de pareja por mes. Si el mes ya tiene foto, se reemplaza.
+- **Grid 3×4.** Vista principal responsiva: 12 casillas (una por mes).
+- **Eliminar calendario.** Acción irreversible. Al eliminar la pareja, el dueño conserva el calendario y puede reemplazarla. También puede eliminar el calendario completo.
 
-## Extras
+### UX
 
-- Investigar encriptación E2E de ente y estudiar si es necesario en la App o si es mucha complejidad para MVP
+- Diseño rosado claro/oscuro (ambos themes)
+- Layout de letras "CA" como logo
+- PWA instalable
+- Screenshots/exportación del álbum (próximamente)
+- Decoraciones con confeti (próximamente)
+- Grid 3×4 responsivo
+
+## Arquitectura
+
+- **Middleware:** permisos y verificación de sesión
+- **Astro Actions:** lógica de negocio (CRUD calendario, invitaciones)
+- **API routes:** Better Auth handler (`/api/auth/*`)
+- **Slug routing:** `/calendario/[slug]` para vista pública/compartida
+
+## Dev
+
+- NO usar React
+- Priorizar TypeScript
+- Git: ramas `production` + `dev`
+
+## Extras (post-MVP)
+
+- Encriptación E2E (investigar ente)
+- Impresión/exportación del álbum
+- Confetti y animaciones decorativas

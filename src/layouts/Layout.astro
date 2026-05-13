@@ -2,6 +2,7 @@
 import { Font } from 'astro:assets'
 import '../styles/globals.css'
 import { ClientRouter } from 'astro:transitions'
+import Background from '@/components/ui/Background.astro'
 
 interface Props {
   title: string
@@ -41,6 +42,9 @@ const {
   </head>
 
   <body>
-    <slot />
+    <div class="relative min-h-svh w-full">
+      <Background />
+      <slot />
+    </div>
   </body>
 </html>

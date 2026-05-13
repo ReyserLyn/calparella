@@ -1,5 +1,5 @@
 import { relations, sql } from 'drizzle-orm'
-import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, index, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
@@ -100,6 +100,159 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
 export const accountsRelations = relations(accounts, ({ one }) => ({
   users: one(users, {
     fields: [accounts.userId],
+    references: [users.id],
+  }),
+}))
+
+// ── Calendarios ─────────────────────────────────────────────
+
+export const calendars = sqliteTable(
+  'calendars',
+  {
+    id: text('id').primaryKey(),
+    slug: text('slug').notNull().unique(),
+    name: text('name').notNull(),
+    year: integer('year').notNull(),
+    ownerId: text('owner_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    isPublic: integer('is_public', { mode: 'boolean' }).default(false).notNull(),
+    coverImageKey: text('cover_image_key'),
+    coverImageUrl: text('cover_image_url'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('calendars_slug_idx').on(table.slug),
+    uniqueIndex('calendars_owner_year_idx').on(table.ownerId, table.year),
+  ],
+)
+
+export const calendarMembers = sqliteTable(
+  'calendar_members',
+  {
+    id: text('id').primaryKey(),
+    calendarId: text('calendar_id')
+      .notNull()
+      .references(() => calendars.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    year: integer('year').notNull(),
+    role: text('role', { enum: ['admin', 'viewer'] })
+      .default('admin')
+      .notNull(),
+    joinedAt: integer('joined_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('cm_calendar_user_idx').on(table.calendarId, table.userId),
+    uniqueIndex('cm_user_year_idx').on(table.userId, table.year),
+  ],
+)
+
+export const calendarPhotos = sqliteTable(
+  'calendar_photos',
+  {
+    id: text('id').primaryKey(),
+    calendarId: text('calendar_id')
+      .notNull()
+      .references(() => calendars.id, { onDelete: 'cascade' }),
+    month: integer('month').notNull(),
+    imageKey: text('image_key').notNull(),
+    imageUrl: text('image_url'),
+    caption: text('caption'),
+    uploadedBy: text('uploaded_by')
+      .notNull()
+      .references(() => users.id),
+    uploadedAt: integer('uploaded_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+  },
+  (table) => [uniqueIndex('cp_calendar_month_idx').on(table.calendarId, table.month)],
+)
+
+export const invitations = sqliteTable(
+  'invitations',
+  {
+    id: text('id').primaryKey(),
+    calendarId: text('calendar_id')
+      .notNull()
+      .references(() => calendars.id, { onDelete: 'cascade' }),
+    inviterId: text('inviter_id')
+      .notNull()
+      .references(() => users.id),
+    inviteeEmail: text('invitee_email').notNull(),
+    inviteeId: text('invitee_id').references(() => users.id),
+    status: text('status', { enum: ['pending', 'accepted', 'declined', 'cancelled'] })
+      .default('pending')
+      .notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [uniqueIndex('inv_calendar_email_idx').on(table.calendarId, table.inviteeEmail)],
+)
+
+// ── Relaciones ─────────────────────────────────────────────
+
+// Extender users con relaciones del calendario
+export const usersRelations2 = relations(users, ({ many }) => ({
+  calendars: many(calendars),
+  calendarMemberships: many(calendarMembers),
+  calendarPhotos: many(calendarPhotos),
+  sentInvitations: many(invitations),
+}))
+
+export const calendarsRelations = relations(calendars, ({ one, many }) => ({
+  owner: one(users, {
+    fields: [calendars.ownerId],
+    references: [users.id],
+  }),
+  members: many(calendarMembers),
+  photos: many(calendarPhotos),
+  invitations: many(invitations),
+}))
+
+export const calendarMembersRelations = relations(calendarMembers, ({ one }) => ({
+  calendar: one(calendars, {
+    fields: [calendarMembers.calendarId],
+    references: [calendars.id],
+  }),
+  user: one(users, {
+    fields: [calendarMembers.userId],
+    references: [users.id],
+  }),
+}))
+
+export const calendarPhotosRelations = relations(calendarPhotos, ({ one }) => ({
+  calendar: one(calendars, {
+    fields: [calendarPhotos.calendarId],
+    references: [calendars.id],
+  }),
+  uploader: one(users, {
+    fields: [calendarPhotos.uploadedBy],
+    references: [users.id],
+  }),
+}))
+
+export const invitationsRelations = relations(invitations, ({ one }) => ({
+  calendar: one(calendars, {
+    fields: [invitations.calendarId],
+    references: [calendars.id],
+  }),
+  inviter: one(users, {
+    fields: [invitations.inviterId],
     references: [users.id],
   }),
 }))
