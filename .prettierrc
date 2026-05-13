@@ -12,7 +12,7 @@
       }
     },
     {
-      "files": [".zed/*json", "tsconfig.json"],
+      "files": [".zed/*.json", "tsconfig.json"],
       "options": { "parser": "jsonc" }
     }
   ],

@@ -35,9 +35,6 @@
   --sidebar-accent-foreground: oklch(0.7098 0.1375 6.7566);
   --sidebar-border: oklch(0.9303 0.0153 12.4396);
   --sidebar-ring: oklch(0.7098 0.1375 6.7566);
-  --font-sans: 'Outfit', sans-serif;
-  --font-serif: Georgia, serif;
-  --font-mono: 'JetBrains Mono', monospace;
   --radius: 0.6rem;
   --shadow-x: 0px;
   --shadow-y: 4px;
@@ -100,9 +97,6 @@
   --sidebar-accent-foreground: oklch(0.7752 0.1362 9.3358);
   --sidebar-border: oklch(0.2364 0.0229 284.5112);
   --sidebar-ring: oklch(0.7752 0.1362 9.3358);
-  --font-sans: Outfit, sans-serif;
-  --font-serif: Georgia, serif;
-  --font-mono: JetBrains Mono, monospace;
   --radius: 0.3rem;
   --shadow-x: 0px;
   --shadow-y: 4px;
@@ -164,10 +158,6 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
-  --font-serif: var(--font-serif);
-
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -183,6 +173,18 @@
   --shadow-2xl: var(--shadow-2xl);
 }
 
+@layer utilities {
+  .font-dyna {
+    font-family: var(--font-dyna);
+  }
+  .font-cherry {
+    font-family: var(--font-cherry);
+  }
+  .font-emilys {
+    font-family: var(--font-emilys);
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -191,6 +193,6 @@
     @apply bg-background text-foreground;
   }
   html {
-    @apply font-sans;
+    font-family: var(--font-dyna);
   }
 }

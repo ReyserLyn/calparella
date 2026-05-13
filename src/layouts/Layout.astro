@@ -1,4 +1,5 @@
 ---
+import { Font } from 'astro:assets'
 import '../styles/globals.css'
 import { ClientRouter } from 'astro:transitions'
 
@@ -26,6 +27,10 @@ const {
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" />
+
+    <Font cssVariable="--font-dyna" preload />
+    <Font cssVariable="--font-cherry" />
+    <Font cssVariable="--font-emilys" />
 
     <meta name="description" content={description} />
     <meta name="author" content="ReyserLyn" />
