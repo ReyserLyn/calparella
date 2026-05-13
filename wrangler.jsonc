@@ -10,6 +10,10 @@
     "binding": "ASSETS",
   },
 
+  "vars": {
+    "BETTER_AUTH_URL": "https://calparella.site",
+  },
+
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1,
@@ -34,6 +38,7 @@
       "binding": "DB",
       "database_name": "calparella",
       "database_id": "96d5f18b-c219-4c94-bd74-7ecd43f92663",
+      "migrations_dir": "./src/db/migrations",
     },
   ],
 }

@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import cloudflare from '@astrojs/cloudflare'
 
 export default defineConfig({
+  site: 'https://calparella.site',
   output: 'server',
   adapter: cloudflare({
     imageService: 'cloudflare-binding',
