@@ -50,12 +50,12 @@ All commands that touch Cloudflare run `wrangler types` first to regenerate `wor
 
 ## Secrets & env
 
-| File | Purpose | Git |
-|------|---------|-----|
-| `.env` | drizzle-kit credentials (Cloudflare API token) | ignored |
-| `.dev.vars` | local dev secrets (`BETTER_AUTH_SECRET`) | ignored |
-| `wrangler.jsonc` `vars` | non-sensitive vars (`BETTER_AUTH_URL`) | committed |
-| `wrangler secret put` | production secrets (`BETTER_AUTH_SECRET`) | CLI only |
+| File                    | Purpose                                        | Git       |
+| ----------------------- | ---------------------------------------------- | --------- |
+| `.env`                  | drizzle-kit credentials (Cloudflare API token) | ignored   |
+| `.dev.vars`             | local dev secrets (`BETTER_AUTH_SECRET`)       | ignored   |
+| `wrangler.jsonc` `vars` | non-sensitive vars (`BETTER_AUTH_URL`)         | committed |
+| `wrangler secret put`   | production secrets (`BETTER_AUTH_SECRET`)      | CLI only  |
 
 **Gotcha:** `BETTER_AUTH_SECRET` is a wrangler secret, NOT in wrangler.jsonc vars. Do NOT reference `env.BETTER_AUTH_SECRET` in code (it won't be in generated types in CI). Better Auth reads it from `process.env` automatically.
 
