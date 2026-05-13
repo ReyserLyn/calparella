@@ -4,11 +4,14 @@
   "compatibility_flags": ["global_fetch_strictly_public", "nodejs_compat"],
   "name": "calparella",
   "main": "@astrojs/cloudflare/entrypoints/server",
+  "workers_dev": false,
 
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
   },
+
+  "routes": [{ "pattern": "calparella.site/*", "zone_name": "calparella.site" }],
 
   "vars": {
     "BETTER_AUTH_URL": "https://calparella.site",
