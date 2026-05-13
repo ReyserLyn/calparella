@@ -1,10 +1,14 @@
 // @ts-check
 import { defineConfig, fontProviders } from 'astro/config'
-
 import tailwindcss from '@tailwindcss/vite'
+import cloudflare from '@astrojs/cloudflare'
 
 export default defineConfig({
   output: 'server',
+  adapter: cloudflare({
+    imageService: 'cloudflare-binding',
+    sessionKVBindingName: 'SESSION',
+  }),
   vite: {
     plugins: [
       tailwindcss(),

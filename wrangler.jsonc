@@ -1,0 +1,39 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "compatibility_date": "2026-05-13",
+  "compatibility_flags": ["global_fetch_strictly_public", "nodejs_compat"],
+  "name": "calparella",
+  "main": "@astrojs/cloudflare/entrypoints/server",
+
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+  },
+
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+  },
+
+  "kv_namespaces": [
+    {
+      "binding": "SESSION",
+      "id": "b9ea7cec7cfb4e209178be8b033863d3",
+    },
+  ],
+
+  "r2_buckets": [
+    {
+      "binding": "CALPARELLA",
+      "bucket_name": "calparella",
+    },
+  ],
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "calparella",
+      "database_id": "96d5f18b-c219-4c94-bd74-7ecd43f92663",
+    },
+  ],
+}
