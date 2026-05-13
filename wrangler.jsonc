@@ -11,7 +11,7 @@
     "binding": "ASSETS",
   },
 
-  "routes": [{ "pattern": "calparella.site/*", "zone_name": "calparella.site" }],
+  "routes": [{ "pattern": "calparella.site", "custom_domain": true }],
 
   "vars": {
     "BETTER_AUTH_URL": "https://calparella.site",
