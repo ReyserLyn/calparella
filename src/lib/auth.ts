@@ -19,7 +19,6 @@ export function createAuth(env?: Cloudflare.Env, ctx?: ExecutionContext, baseURL
   const resolvedBaseURL = baseURL ?? BETTER_AUTH_URL
 
   return betterAuth({
-    secret: env?.BETTER_AUTH_SECRET,
     baseURL: resolvedBaseURL,
     database: drizzleAdapter(db, {
       provider: 'sqlite',
