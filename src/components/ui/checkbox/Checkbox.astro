@@ -64,7 +64,7 @@ const { class: className = '', id = '', name = id, ...props } = Astro.props
 
 import { cn } from '@/lib/utils'
 import Icon from '@/components/ui/Icon.astro'
-import CheckmarkCircle02Icon from '@hugeicons/core-free-icons/CheckmarkCircle02Icon'
+import Tick04Icon from '@hugeicons/core-free-icons/Tick04Icon'
 
 const baseWrapper =
   'peer appearance-none size-4 shrink-0 rounded-[4px] border border-input shadow-xs outline-none transition-colors checked:bg-primary checked:border-primary dark:bg-input/30 dark:checked:bg-primary dark:checked:border-primary focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:checked:border-primary disabled:cursor-not-allowed disabled:opacity-50 group-has-disabled/field:opacity-50 relative after:absolute after:-inset-x-3 after:-inset-y-2'
@@ -85,9 +85,9 @@ const baseWrapper =
     />
     <span
       data-slot="checkbox-indicator"
-      class="pointer-events-none absolute inset-0 grid place-content-center text-primary-foreground opacity-0 transition-opacity peer-checked:opacity-100 [&>svg]:size-3.5"
+      class="pointer-events-none absolute inset-0 grid place-content-center text-primary-foreground opacity-0 transition-opacity peer-checked:opacity-100 [&>svg]:size-3"
     >
-      <Icon data={CheckmarkCircle02Icon} size={14} class="size-3.5" />
+      <Icon data={Tick04Icon} />
     </span>
   </span>
   <slot />

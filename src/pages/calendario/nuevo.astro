@@ -1,0 +1,264 @@
+---
+import Layout from '@/layouts/Layout.astro'
+import Card from '@/components/ui/card/Card.astro'
+import CardHeader from '@/components/ui/card/CardHeader.astro'
+import CardTitle from '@/components/ui/card/CardTitle.astro'
+import CardDescription from '@/components/ui/card/CardDescription.astro'
+import CardContent from '@/components/ui/card/CardContent.astro'
+import FieldGroup from '@/components/ui/field/FieldGroup.astro'
+import Field from '@/components/ui/field/Field.astro'
+import FieldLabel from '@/components/ui/field/FieldLabel.astro'
+import FieldDescription from '@/components/ui/field/FieldDescription.astro'
+import FieldError from '@/components/ui/field/FieldError.astro'
+import Input from '@/components/ui/Input.astro'
+import Checkbox from '@/components/ui/checkbox/Checkbox.astro'
+import Button from '@/components/ui/Button.astro'
+import Icon from '@/components/ui/Icon.astro'
+import Calendar02Icon from '@hugeicons/core-free-icons/Calendar02Icon'
+import Link01Icon from '@hugeicons/core-free-icons/Link01Icon'
+import LoaderPinwheelIcon from '@hugeicons/core-free-icons/LoaderPinwheelIcon'
+import Logo from '@/components/branding/Logo.astro'
+import { env } from 'cloudflare:workers'
+import { eq } from 'drizzle-orm'
+import { calendarMembers } from '@/db/schema'
+import { createClient } from '@/db'
+
+if (!Astro.locals.user) {
+  return Astro.redirect('/iniciar-sesion')
+}
+
+const db = createClient(env.DB)
+const myMembership = await db
+  .select({ id: calendarMembers.id })
+  .from(calendarMembers)
+  .where(eq(calendarMembers.userId, Astro.locals.user.id))
+  .get()
+
+if (myMembership) {
+  return Astro.redirect('/calendario')
+}
+---
+
+<Layout title="Nuevo calendario - CalParella">
+  <div class="flex min-h-svh flex-col items-center justify-center bg-background p-6 md:p-10">
+    <div class="w-full max-w-md">
+      <Card>
+        <CardHeader class="flex flex-col items-center gap-3 text-center">
+          <Logo iconSize={40} textSize="text-4xl" class="mb-4" />
+          <CardTitle class="font-bold">Crear calendario</CardTitle>
+          <CardDescription class="text-sm text-muted-foreground">
+            Cada año pueden tener un calendario nuevo para recordar sus momentos especiales.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form method="POST" novalidate id="calendar-form">
+            <FieldGroup class="gap-5">
+              <Field id="field-name">
+                <FieldLabel for="name">Nombre del calendario</FieldLabel>
+                <div class="relative">
+                  <Icon
+                    data={Calendar02Icon}
+                    size={16}
+                    class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
+                  />
+                  <Input
+                    id="name"
+                    name="name"
+                    type="text"
+                    placeholder="Ej: Reyser & Marilyn"
+                    required
+                    autocomplete="off"
+                    class="pl-9"
+                  />
+                </div>
+                <FieldError forceMount class="hidden" />
+              </Field>
+
+              <Field id="field-slug">
+                <FieldLabel for="slug">Enlace personalizado</FieldLabel>
+                <div class="relative">
+                  <Icon
+                    data={Link01Icon}
+                    size={16}
+                    class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
+                  />
+                  <Input
+                    id="slug"
+                    name="slug"
+                    type="text"
+                    placeholder="reyser-y-marilyn"
+                    required
+                    autocomplete="off"
+                    class="pl-9"
+                  />
+                </div>
+                <FieldDescription class="text-xs"
+                  >Se genera automáticamente del nombre. Podés editarlo. Solo minúsculas, números y
+                  guiones.</FieldDescription
+                >
+                <FieldError forceMount class="hidden" />
+              </Field>
+
+              <div class="mt-2 flex items-start gap-3">
+                <Checkbox id="isPublic" name="isPublic" />
+                <div class="grid gap-1">
+                  <FieldLabel for="isPublic" class="text-sm leading-none font-medium"
+                    >Calendario público</FieldLabel
+                  >
+                  <FieldDescription class="text-xs"
+                    >Cualquiera con el enlace puede verlo. Desactivado = solo ustedes.</FieldDescription
+                  >
+                </div>
+              </div>
+
+              <div
+                id="error-container"
+                class="hidden rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+              >
+              </div>
+
+              <Button type="submit" size="lg" class="w-full" id="submit-button">
+                <span class="inline-flex items-center gap-2">
+                  <span id="submit-icon"><Icon data={Calendar02Icon} size={16} /></span>
+                  <span id="submit-spinner" style="display:none"
+                    ><Icon data={LoaderPinwheelIcon} size={16} class="animate-spin" /></span
+                  >
+                  <span id="submit-text">Crear calendario</span>
+                </span>
+              </Button>
+            </FieldGroup>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import slugify from 'slugify'
+  import { actions } from 'astro:actions'
+  import { createCalendarSchema } from '@/lib/calendar-schemas'
+
+  const schema = createCalendarSchema
+
+  // ── DOM refs ────────────────────────────────────────────
+  const nameInput = document.getElementById('name') as HTMLInputElement | null
+  const slugInput = document.getElementById('slug') as HTMLInputElement | null
+  const fieldName = document.getElementById('field-name')
+  const fieldSlug = document.getElementById('field-slug')
+  const form = document.getElementById('calendar-form') as HTMLFormElement | null
+  const submitButton = document.getElementById('submit-button')
+  const submitIcon = document.getElementById('submit-icon')
+  const spinner = document.getElementById('submit-spinner')
+  const submitText = document.getElementById('submit-text')
+  const errorContainer = document.getElementById('error-container')
+
+  type FieldId = 'name' | 'slug'
+  const fieldMap: Record<FieldId, { input: HTMLInputElement | null; field: HTMLElement | null }> = {
+    name: { input: nameInput, field: fieldName },
+    slug: { input: slugInput, field: fieldSlug },
+  }
+
+  // ── Helpers ─────────────────────────────────────────────
+  function getFieldError(field: HTMLElement): HTMLElement | null {
+    return field.querySelector('[data-slot="field-error"]')
+  }
+
+  function setFieldError(fieldId: FieldId, message: string | null) {
+    const entry = fieldMap[fieldId]
+    if (!entry?.field || !entry.input) return
+    const errorEl = getFieldError(entry.field)
+    if (!errorEl) return
+    if (message) {
+      entry.input.setAttribute('aria-invalid', 'true')
+      entry.field.dataset.invalid = 'true'
+      errorEl.textContent = message
+      errorEl.classList.remove('hidden')
+    } else {
+      entry.input.removeAttribute('aria-invalid')
+      delete entry.field.dataset.invalid
+      errorEl.textContent = ''
+      errorEl.classList.add('hidden')
+    }
+  }
+
+  function validateField(fieldId: FieldId): string | null {
+    const value = fieldMap[fieldId].input?.value?.trim() ?? ''
+    const result = schema.shape[fieldId].safeParse(value)
+    if (!result.success) {
+      const msg = result.error.issues[0]?.message || 'Valor inválido'
+      setFieldError(fieldId, msg)
+      return msg
+    }
+    setFieldError(fieldId, null)
+    return null
+  }
+
+  function validateAll(): boolean {
+    return (['name', 'slug'] as FieldId[]).map(validateField).every((e) => e === null)
+  }
+
+  function resetErrors() {
+    ;(['name', 'slug'] as FieldId[]).forEach((id) => setFieldError(id, null))
+  }
+
+  // ── Slug auto-generado ──────────────────────────────────
+  if (nameInput && slugInput) {
+    let userEditedSlug = false
+    slugInput.addEventListener('focus', () => {
+      userEditedSlug = true
+    })
+    nameInput.addEventListener('input', () => {
+      if (!userEditedSlug) {
+        slugInput.value = slugify(nameInput.value, { lower: true, strict: true })
+      }
+    })
+  }
+
+  // ── Eventos ─────────────────────────────────────────────
+  if (form && submitButton && submitIcon && spinner && submitText && errorContainer) {
+    // Re-validar al escribir si ya está marcado como inválido
+    ;(['name', 'slug'] as FieldId[]).forEach((id) => {
+      const el = fieldMap[id].input
+      el?.addEventListener('input', () => {
+        const field = fieldMap[id].field
+        if (field && 'invalid' in field.dataset) validateField(id)
+      })
+    })
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      errorContainer.classList.add('hidden')
+      errorContainer.textContent = ''
+      resetErrors()
+
+      if (!validateAll()) return
+
+      submitButton.setAttribute('disabled', '')
+      submitIcon.style.display = 'none'
+      spinner.style.display = ''
+      submitText.textContent = 'Creando…'
+
+      const formData = new FormData(form)
+      const { data, error } = await actions.createCalendar(formData)
+
+      submitIcon.style.display = ''
+      spinner.style.display = 'none'
+      submitText.textContent = 'Crear calendario'
+      submitButton.removeAttribute('disabled')
+
+      if (data?.success) {
+        window.location.href = '/calendario'
+        return
+      }
+
+      if (error) {
+        if (error.message) {
+          errorContainer.textContent = error.message
+          errorContainer.classList.remove('hidden')
+        }
+        form.scrollIntoView({ behavior: 'smooth' })
+      }
+    })
+  }
+</script>

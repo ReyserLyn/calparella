@@ -1,13 +1,29 @@
 ---
-import Button from '@/components/ui/Button.astro'
 import Layout from '@/layouts/Layout.astro'
 import Header from '@/sections/header.astro'
+import { env } from 'cloudflare:workers'
+import { eq } from 'drizzle-orm'
+import { calendars, calendarMembers } from '@/db/schema'
+import { createClient } from '@/db'
+import Button from '@/components/ui/Button.astro'
 
 if (!Astro.locals.user) {
   return Astro.redirect('/iniciar-sesion')
 }
 
 const user = Astro.locals.user
+const db = createClient(env.DB)
+
+const memberOf = await db
+  .select({
+    calendar: calendars,
+  })
+  .from(calendarMembers)
+  .innerJoin(calendars, eq(calendarMembers.calendarId, calendars.id))
+  .where(eq(calendarMembers.userId, user.id))
+  .get()
+
+const calendar = memberOf?.calendar ?? null
 ---
 
 <Layout title="Calendario - CalParella">
@@ -26,14 +42,31 @@ const user = Astro.locals.user
         </div>
       </div>
 
-      <div class="rounded-lg border p-6">
-        <h2 class="mb-4 text-lg font-semibold">Tu calendario</h2>
-        <p class="text-sm text-muted-foreground">
-          Todavía no tenés un calendario. ¡Creá uno nuevo para empezar!
-        </p>
-      </div>
+      {
+        calendar ? (
+          <div class="rounded-lg border bg-background p-6">
+            <h2 class="mb-4 text-lg font-semibold">{calendar.name}</h2>
+            <p class="text-sm text-muted-foreground">
+              Calendario del año {calendar.year} — {calendar.isPublic ? 'Público' : 'Privado'}
+            </p>
+          </div>
+        ) : (
+          <div class="rounded-lg border bg-background p-6 text-center">
+            <h2 class="mb-2 text-lg font-semibold">Todavía no tenés un calendario</h2>
+            <p class="mb-4 text-sm text-muted-foreground">
+              Creá uno nuevo para empezar a guardar recuerdos con tu pareja.
+            </p>
+            <a
+              href="/calendario/nuevo"
+              class="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80"
+            >
+              Crear calendario
+            </a>
+          </div>
+        )
+      }
 
-      <Button id="logout-button"> Cerrar sesión </Button>
+      <Button id="logout-button">Cerrar sesión</Button>
     </section>
   </main>
 </Layout>
