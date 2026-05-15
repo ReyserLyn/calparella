@@ -5,6 +5,7 @@ import Avatar from '@/components/ui/avatar/Avatar.astro'
 import AvatarFallback from '@/components/ui/avatar/AvatarFallback.astro'
 import Icon from '@/components/ui/Icon.astro'
 import Calendar02Icon from '@hugeicons/core-free-icons/Calendar02Icon'
+import Logout01Icon from '@hugeicons/core-free-icons/Logout01Icon'
 import AddTeamIcon from '@hugeicons/core-free-icons/AddTeamIcon'
 import Settings01Icon from '@hugeicons/core-free-icons/Settings01Icon'
 import UserIcon from '@hugeicons/core-free-icons/UserIcon'
@@ -155,7 +156,12 @@ const successIconSvg = `<svg viewBox='0 0 24 24' width='14' height='14' fill='no
               </DropdownMenuGroup>
 
               <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" id="logout-button">
+              <DropdownMenuItem
+                variant="destructive"
+                id="logout-button"
+                class="hover:cursor-pointer"
+              >
+                <Icon data={Logout01Icon} size={14} />
                 Cerrar sesión
               </DropdownMenuItem>
             </DropdownMenuContent>

@@ -37,7 +37,7 @@ const user = Astro.locals.user
         <Icon data={HeartCheckIcon} size={36} class="text-primary/25" />
       </span>
       <!-- Corazón arriba-derecha -->
-      <span class="absolute top-12 right-8 rotate-[15deg] md:top-16 md:right-20">
+      <span class="absolute top-12 right-8 rotate-15 md:top-16 md:right-20">
         <Icon data={BookHeartIcon} size={30} class="text-primary/30" />
       </span>
       <!-- Corazón medio-izquierda -->
@@ -45,11 +45,11 @@ const user = Astro.locals.user
         <Icon data={HeartCheckIcon} size={28} class="text-primary/20" />
       </span>
       <!-- Corazón medio-derecha -->
-      <span class="absolute top-1/3 right-10 hidden rotate-[25deg] md:block">
+      <span class="absolute top-1/3 right-10 hidden rotate-25 md:block">
         <Icon data={BookHeartIcon} size={34} class="text-primary/25" />
       </span>
       <!-- Calendario esquina -->
-      <span class="absolute right-4 bottom-1/3 rotate-[10deg] md:right-10">
+      <span class="absolute right-4 bottom-1/3 rotate-10 md:right-10">
         <Icon data={CalendarLove01Icon} size={40} class="text-primary/15" />
       </span>
       <!-- Corazón abajo-izquierda -->
@@ -57,7 +57,7 @@ const user = Astro.locals.user
         <Icon data={HeartCheckIcon} size={24} class="text-primary/25" />
       </span>
       <!-- Corazón pequeño suelto -->
-      <span class="absolute top-2/3 right-16 hidden rotate-[40deg] sm:block">
+      <span class="absolute top-2/3 right-16 hidden rotate-40 sm:block">
         <Icon data={BookHeartIcon} size={20} class="text-primary/20" />
       </span>
     </div>
@@ -106,9 +106,7 @@ const user = Astro.locals.user
           <Icon data={Camera01Icon} size={28} class="text-primary" />
         </div>
         <div class="space-y-2">
-          <h3 class="font-cherry text-lg tracking-tight text-primary">
-            Una foto por mes
-          </h3>
+          <h3 class="font-cherry text-lg tracking-tight text-primary">Una foto por mes</h3>
           <p class="text-sm leading-relaxed text-muted-foreground">
             Doce momentos al año. Cada mes suben la foto que más los represente y al final del año
             tienen una historia completa.
@@ -123,9 +121,7 @@ const user = Astro.locals.user
           <Icon data={AddTeamIcon} size={28} class="text-primary" />
         </div>
         <div class="space-y-2">
-          <h3 class="font-cherry text-lg tracking-tight text-primary">
-            Solo para dos
-          </h3>
+          <h3 class="font-cherry text-lg tracking-tight text-primary">Solo para dos</h3>
           <p class="text-sm leading-relaxed text-muted-foreground">
             Un espacio solo de ustedes. Invitá a tu pareja y juntos decidan qué recuerdos guardar
             mes a mes, sin ruido.
@@ -140,12 +136,10 @@ const user = Astro.locals.user
           <Icon data={GlobeIcon} size={28} class="text-primary" />
         </div>
         <div class="space-y-2">
-          <h3 class="font-cherry text-lg tracking-tight text-primary">
-            Público o privado
-          </h3>
+          <h3 class="font-cherry text-lg tracking-tight text-primary">Público o privado</h3>
           <p class="text-sm leading-relaxed text-muted-foreground">
-            Ustedes eligen quién lo ve. Compártanlo con familia y amigos, o guárdenlo como un
-            diario íntimo. La decisión es de a dos.
+            Ustedes eligen quién lo ve. Compártanlo con familia y amigos, o guárdenlo como un diario
+            íntimo. La decisión es de a dos.
           </p>
         </div>
       </div>
