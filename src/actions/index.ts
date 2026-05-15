@@ -122,6 +122,7 @@ export const server = {
         year,
         ownerId: user.id,
         isPublic: input.isPublic,
+        description: input.description || null,
         createdAt: now,
         updatedAt: now,
       })

@@ -11,6 +11,7 @@ import FieldLabel from '@/components/ui/field/FieldLabel.astro'
 import FieldDescription from '@/components/ui/field/FieldDescription.astro'
 import FieldError from '@/components/ui/field/FieldError.astro'
 import Input from '@/components/ui/Input.astro'
+import Textarea from '@/components/ui/textarea/Textarea.astro'
 import Checkbox from '@/components/ui/checkbox/Checkbox.astro'
 import Button from '@/components/ui/Button.astro'
 import Icon from '@/components/ui/Icon.astro'
@@ -39,7 +40,7 @@ if (myMembership) {
 }
 ---
 
-<Layout title="Nuevo calendario - CalParella">
+<Layout title="Nuevo calendario - CalParella" footer={false}>
   <div class="flex min-h-svh flex-col items-center justify-center bg-background p-6 md:p-10">
     <div class="w-full max-w-md">
       <Card>
@@ -99,6 +100,22 @@ if (myMembership) {
                 <FieldError forceMount class="hidden" />
               </Field>
 
+              <Field id="field-description">
+                <FieldLabel for="description">Descripción (opcional)</FieldLabel>
+                <Textarea
+                  id="description"
+                  name="description"
+                  rows="3"
+                  placeholder="Los momentos que construyen su historia, mes a mes."
+                  autocomplete="off"
+                  class="resize-none"
+                />
+                <FieldDescription
+                  >Una frase que aparecerá bajo el nombre del calendario (máx. 200 caracteres).</FieldDescription
+                >
+                <FieldError forceMount class="hidden" />
+              </Field>
+
               <div class="mt-2 flex items-start gap-3">
                 <Checkbox id="isPublic" name="isPublic" />
                 <div class="grid gap-1">
@@ -144,8 +161,10 @@ if (myMembership) {
   // ── DOM refs ────────────────────────────────────────────
   const nameInput = document.getElementById('name') as HTMLInputElement | null
   const slugInput = document.getElementById('slug') as HTMLInputElement | null
+  const descriptionTextarea = document.getElementById('description') as HTMLTextAreaElement | null
   const fieldName = document.getElementById('field-name')
   const fieldSlug = document.getElementById('field-slug')
+  const fieldDescription = document.getElementById('field-description')
   const form = document.getElementById('calendar-form') as HTMLFormElement | null
   const submitButton = document.getElementById('submit-button')
   const submitIcon = document.getElementById('submit-icon')
@@ -153,10 +172,14 @@ if (myMembership) {
   const submitText = document.getElementById('submit-text')
   const errorContainer = document.getElementById('error-container')
 
-  type FieldId = 'name' | 'slug'
-  const fieldMap: Record<FieldId, { input: HTMLInputElement | null; field: HTMLElement | null }> = {
+  type FieldId = 'name' | 'slug' | 'description'
+  const fieldMap: Record<
+    FieldId,
+    { input: HTMLInputElement | HTMLTextAreaElement | null; field: HTMLElement | null }
+  > = {
     name: { input: nameInput, field: fieldName },
     slug: { input: slugInput, field: fieldSlug },
+    description: { input: descriptionTextarea, field: fieldDescription },
   }
 
   // ── Helpers ─────────────────────────────────────────────
@@ -195,11 +218,13 @@ if (myMembership) {
   }
 
   function validateAll(): boolean {
-    return (['name', 'slug'] as FieldId[]).map(validateField).every((e) => e === null)
+    return (['name', 'slug', 'description'] as FieldId[])
+      .map(validateField)
+      .every((e) => e === null)
   }
 
   function resetErrors() {
-    ;(['name', 'slug'] as FieldId[]).forEach((id) => setFieldError(id, null))
+    ;(['name', 'slug', 'description'] as FieldId[]).forEach((id) => setFieldError(id, null))
   }
 
   // ── Slug auto-generado ──────────────────────────────────
@@ -218,7 +243,7 @@ if (myMembership) {
   // ── Eventos ─────────────────────────────────────────────
   if (form && submitButton && submitIcon && spinner && submitText && errorContainer) {
     // Re-validar al escribir si ya está marcado como inválido
-    ;(['name', 'slug'] as FieldId[]).forEach((id) => {
+    ;(['name', 'slug', 'description'] as FieldId[]).forEach((id) => {
       const el = fieldMap[id].input
       el?.addEventListener('input', () => {
         const field = fieldMap[id].field

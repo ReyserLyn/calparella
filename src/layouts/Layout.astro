@@ -3,12 +3,14 @@ import { Font } from 'astro:assets'
 import '../styles/globals.css'
 // import { ClientRouter } from 'astro:transitions'
 import Background from '@/components/ui/Background.astro'
+import Footer from '@/sections/Footer.astro'
 
 interface Props {
   title: string
   description?: string
   canonical?: string
   robots?: string
+  footer?: boolean
 }
 
 const {
@@ -16,6 +18,7 @@ const {
   description = 'CalParella, el calendario compartido para parejas. Organiza momentos juntos, guarda recuerdos y celebra fechas especiales en un espacio privado solo para dos.',
   canonical,
   robots,
+  footer = true,
 } = Astro.props
 ---
 
@@ -42,9 +45,13 @@ const {
   </head>
 
   <body>
-    <div class="relative min-h-svh w-full">
+    <div class="relative flex min-h-svh w-full flex-col">
       <Background />
-      <slot />
+
+      <div class="flex flex-1 flex-col">
+        <slot />
+      </div>
+      {footer && <Footer />}
     </div>
   </body>
 </html>

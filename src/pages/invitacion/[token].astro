@@ -89,7 +89,7 @@ const isPending = invitation?.status === 'pending'
 
 <Layout title={isValid ? `Invitación a ${invitation?.calendarName}` : 'Invitación inválida'}>
   <Header />
-  <main class="mx-auto max-w-md px-4 pt-32">
+  <main class="mx-auto w-full max-w-md px-4 pt-32">
     <div class="rounded-xl border border-border bg-card p-6 shadow-sm">
       {
         !isValid ? (

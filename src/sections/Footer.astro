@@ -1,0 +1,27 @@
+---
+import Icon from '@/components/ui/Icon.astro'
+import BookHeartIcon from '@hugeicons/core-free-icons/BookHeartIcon'
+---
+
+<footer class="relative my-8 text-center select-none">
+  <div
+    aria-hidden="true"
+    class="pointer-events-none absolute top-1/2 left-1/2 h-20 w-[min(560px,85vw)] -translate-x-1/2 -translate-y-1/2 bg-background"
+    style={{
+      opacity: 1,
+      maskImage: 'radial-gradient(ellipse 50% 80% at 50% 50%, black 35%, transparent 70%)',
+      WebkitMaskImage: 'radial-gradient(ellipse 50% 80% at 50% 50%, black 35%, transparent 70%)',
+    }}
+  >
+  </div>
+  <div class="relative z-10">
+    <p class="font-cherry text-xs tracking-wider text-muted-foreground/30">CalParella</p>
+    <div class="mx-auto flex items-center justify-center gap-1.5">
+      <Icon data={BookHeartIcon} size={14} class="text-primary/50" />
+      <span class="font-emilys text-sm text-muted-foreground/60">
+        los momentos se cuentan de a dos
+      </span>
+      <Icon data={BookHeartIcon} size={14} class="text-primary/50" />
+    </div>
+  </div>
+</footer>

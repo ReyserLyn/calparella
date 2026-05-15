@@ -20,4 +20,9 @@ export const createCalendarSchema = z.object({
       error: 'Solo letras minúsculas, números y guiones.',
     }),
   isPublic: z.coerce.boolean().optional().default(false),
+  description: z
+    .string()
+    .trim()
+    .max(200, { error: 'La descripción no puede superar 200 caracteres.' })
+    .optional(),
 })

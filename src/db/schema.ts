@@ -117,6 +117,7 @@ export const calendars = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     isPublic: integer('is_public', { mode: 'boolean' }).default(false).notNull(),
+    description: text('description'),
     coverImageKey: text('cover_image_key'),
     coverImageUrl: text('cover_image_url'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' })

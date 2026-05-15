@@ -9,6 +9,10 @@ import AddTeamIcon from '@hugeicons/core-free-icons/AddTeamIcon'
 import Settings01Icon from '@hugeicons/core-free-icons/Settings01Icon'
 import UserIcon from '@hugeicons/core-free-icons/UserIcon'
 import MailSend01Icon from '@hugeicons/core-free-icons/MailSend01Icon'
+import Link01Icon from '@hugeicons/core-free-icons/Link01Icon'
+import GlobeIcon from '@hugeicons/core-free-icons/GlobeIcon'
+import CircleLock01Icon from '@hugeicons/core-free-icons/CircleLock01Icon'
+import Tick04Icon from '@hugeicons/core-free-icons/Tick04Icon'
 import DropdownMenu from '@/components/ui/dropdown-menu/DropdownMenu.astro'
 import DropdownMenuTrigger from '@/components/ui/dropdown-menu/DropdownMenuTrigger.astro'
 import DropdownMenuContent from '@/components/ui/dropdown-menu/DropdownMenuContent.astro'
@@ -18,34 +22,65 @@ import DropdownMenuLabel from '@/components/ui/dropdown-menu/DropdownMenuLabel.a
 import DropdownMenuGroup from '@/components/ui/dropdown-menu/DropdownMenuGroup.astro'
 import { env } from 'cloudflare:workers'
 import { eq } from 'drizzle-orm'
-import { calendarMembers } from '@/db/schema'
+import { calendarMembers, calendars } from '@/db/schema'
 import { createClient } from '@/db'
 
 const user = Astro.locals.user
 
 let hasCalendar = false
+let calendarSlug = ''
+let calendarIsPublic = false
 if (user) {
   try {
     const db = createClient(env.DB)
     const m = await db
-      .select({ id: calendarMembers.id })
+      .select({ slug: calendars.slug, isPublic: calendars.isPublic })
       .from(calendarMembers)
+      .innerJoin(calendars, eq(calendarMembers.calendarId, calendars.id))
       .where(eq(calendarMembers.userId, user.id))
       .get()
     hasCalendar = !!m
+    calendarSlug = m?.slug ?? ''
+    calendarIsPublic = m?.isPublic ?? false
   } catch {
     /* ignore DB errors in header */
   }
 }
+
+const tickSvgParts = Tick04Icon.map(([tag, attrs]) => {
+  const attrStr = Object.entries(attrs)
+    .filter(([k]) => k !== 'key')
+    .map(([k, v]) => `${k}='${v}'`)
+    .join(' ')
+  return `<${tag} ${attrStr} />`
+}).join('')
+
+const successIconSvg = `<svg viewBox='0 0 24 24' width='14' height='14' fill='none' stroke='currentColor' stroke-width='1.5'>${tickSvgParts}</svg>`
 ---
 
 <header
-  class="justify-center/90 fixed top-0 z-50 mx-auto flex h-20 w-full items-center border-b bg-background select-none"
+  class="fixed top-0 z-50 mx-auto flex h-20 w-full items-center justify-center border-b bg-background select-none"
 >
   <div class="mx-auto flex w-full max-w-7xl items-center justify-between px-4">
     <Logo iconSize={28} textSize="text-3xl" />
 
     <nav class="flex items-center gap-4">
+      {
+        hasCalendar && (
+          <span class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+            {calendarIsPublic ? (
+              <>
+                <Icon data={GlobeIcon} size={11} /> Público
+              </>
+            ) : (
+              <>
+                <Icon data={CircleLock01Icon} size={11} /> Privado
+              </>
+            )}
+          </span>
+        )
+      }
+
       {
         user ? (
           <DropdownMenu lockScroll={false}>
@@ -75,6 +110,18 @@ if (user) {
                     <Icon data={Calendar02Icon} size={14} /> Ver calendario
                   </a>
                 </DropdownMenuItem>
+                {hasCalendar && (
+                  <DropdownMenuItem class="p-0">
+                    <Button
+                      variant="ghost"
+                      class="copy-link-btn w-full justify-start rounded-sm px-2 py-1.5 text-sm"
+                      data-slug={calendarSlug}
+                      data-success-icon={successIconSvg}
+                    >
+                      <Icon data={Link01Icon} size={14} class="size-3.5" /> Compartir
+                    </Button>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem class="p-0">
                   <a
                     href="/invitaciones"
@@ -132,5 +179,24 @@ if (user) {
         if (!error) window.location.href = '/'
       })
     })
+  })
+
+  // Copiar enlace del calendario
+  const copyBtn = document.querySelector('.copy-link-btn')
+  copyBtn?.addEventListener('click', async () => {
+    const slug = copyBtn.getAttribute('data-slug')
+    if (!slug) return
+    const url = `${window.location.origin}/calendario/${slug}`
+    try {
+      await navigator.clipboard.writeText(url)
+      const original = copyBtn.innerHTML
+      const iconSvg = copyBtn.getAttribute('data-success-icon') || ''
+      copyBtn.innerHTML = `${iconSvg} ¡Compartido!`
+      setTimeout(() => {
+        copyBtn.innerHTML = original
+      }, 2000)
+    } catch {
+      // fallback silencioso
+    }
   })
 </script>
