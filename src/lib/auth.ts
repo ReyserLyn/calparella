@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth/minimal'
 import { drizzleAdapter } from '@better-auth/drizzle-adapter'
 import { drizzle } from 'drizzle-orm/d1'
 import * as schema from '@/db/schema'
+import { hashPassword, verifyPassword } from '@/lib/password'
 
 export type Auth = ReturnType<typeof createAuth>
 
@@ -39,6 +40,19 @@ export function createAuth(env?: Cloudflare.Env, ctx?: ExecutionContext, baseURL
     emailAndPassword: {
       enabled: true,
       autoSignIn: true,
+      /**
+       * Custom password hashing con node:crypto.scryptSync.
+       *
+       * El hashing de contraseñas en JS puro (@noble/hashes/scrypt) excede
+       * el CPU time limit de Cloudflare Workers. scryptSync es nativo, usa
+       * el thread pool de libuv y NO bloquea el event loop de workerd.
+       *
+       * Requiere `nodejs_compat` en wrangler.jsonc (ya activado).
+       */
+      password: {
+        hash: hashPassword,
+        verify: verifyPassword,
+      },
     },
 
     /**

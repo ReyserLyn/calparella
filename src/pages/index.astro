@@ -1,8 +1,154 @@
 ---
 import Layout from '@/layouts/Layout.astro'
 import Header from '@/sections/header.astro'
+import Logo from '@/components/branding/Logo.astro'
+import Icon from '@/components/ui/Icon.astro'
+import Button from '@/components/ui/Button.astro'
+import Camera01Icon from '@hugeicons/core-free-icons/Camera01Icon'
+import AddTeamIcon from '@hugeicons/core-free-icons/AddTeamIcon'
+import GlobeIcon from '@hugeicons/core-free-icons/GlobeIcon'
+import HeartCheckIcon from '@hugeicons/core-free-icons/HeartCheckIcon'
+import BookHeartIcon from '@hugeicons/core-free-icons/BookHeartIcon'
+import CalendarLove01Icon from '@hugeicons/core-free-icons/CalendarLove01Icon'
+
+const user = Astro.locals.user
 ---
 
-<Layout title="CallParella">
+<Layout title="CalParella — El calendario de a dos">
   <Header />
+  <main
+    class="relative mx-auto mt-28 flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-10 px-4 text-center"
+  >
+    <!-- Máscara radial para legibilidad -->
+    <div
+      aria-hidden="true"
+      class="pointer-events-none absolute top-1/2 left-1/2 h-[min(500px,70vmin)] w-[min(500px,70vmin)] -translate-x-1/2 -translate-y-1/2 bg-background"
+      style={{
+        maskImage: 'radial-gradient(circle 50% at 50% 50%, black 40%, transparent 80%)',
+        WebkitMaskImage: 'radial-gradient(circle 50% at 50% 50%, black 40%, transparent 80%)',
+      }}
+    >
+    </div>
+
+    <!-- Adornos decorativos -->
+    <div aria-hidden="true" class="pointer-events-none absolute inset-0 select-none">
+      <!-- Corazón arriba-izquierda -->
+      <span class="absolute top-6 left-6 rotate-[-20deg] md:top-12 md:left-12">
+        <Icon data={HeartCheckIcon} size={36} class="text-primary/25" />
+      </span>
+      <!-- Corazón arriba-derecha -->
+      <span class="absolute top-12 right-8 rotate-[15deg] md:top-16 md:right-20">
+        <Icon data={BookHeartIcon} size={30} class="text-primary/30" />
+      </span>
+      <!-- Corazón medio-izquierda -->
+      <span class="absolute top-1/3 left-8 hidden rotate-[-35deg] md:block">
+        <Icon data={HeartCheckIcon} size={28} class="text-primary/20" />
+      </span>
+      <!-- Corazón medio-derecha -->
+      <span class="absolute top-1/3 right-10 hidden rotate-[25deg] md:block">
+        <Icon data={BookHeartIcon} size={34} class="text-primary/25" />
+      </span>
+      <!-- Calendario esquina -->
+      <span class="absolute right-4 bottom-1/3 rotate-[10deg] md:right-10">
+        <Icon data={CalendarLove01Icon} size={40} class="text-primary/15" />
+      </span>
+      <!-- Corazón abajo-izquierda -->
+      <span class="absolute bottom-28 left-8 rotate-[-10deg] md:bottom-36 md:left-20">
+        <Icon data={HeartCheckIcon} size={24} class="text-primary/25" />
+      </span>
+      <!-- Corazón pequeño suelto -->
+      <span class="absolute top-2/3 right-16 hidden rotate-[40deg] sm:block">
+        <Icon data={BookHeartIcon} size={20} class="text-primary/20" />
+      </span>
+    </div>
+
+    <!-- Hero -->
+    <section class="relative z-10 flex flex-col items-center gap-6">
+      <Logo iconSize={72} textSize="text-4xl sm:text-6xl md:text-7xl" />
+
+      <div class="space-y-3">
+        <p class="font-emilys text-xl text-muted-foreground md:text-2xl">
+          una foto por mes, un recuerdo por año
+        </p>
+        <p class="mx-auto max-w-md text-base text-muted-foreground/70 md:text-lg">
+          El calendario compartido para parejas. Doce meses, doce momentos. Solo para dos.
+        </p>
+      </div>
+
+      <div class="flex gap-3 pt-4">
+        {
+          user ? (
+            <Button as="a" href="/calendario" size="lg">
+              <Icon data={CalendarLove01Icon} size={16} />
+              Ir a mi calendario
+            </Button>
+          ) : (
+            <>
+              <Button as="a" href="/registro" size="lg">
+                <Icon data={AddTeamIcon} size={16} />
+                Crear cuenta
+              </Button>
+              <Button as="a" href="/iniciar-sesion" variant="outline" size="lg">
+                Iniciar sesión
+              </Button>
+            </>
+          )
+        }
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section class="relative z-10 grid w-full gap-8 md:grid-cols-3">
+      <div class="group flex flex-col items-center gap-4 text-center">
+        <div
+          class="flex size-16 items-center justify-center rounded-full bg-primary/10 transition-transform group-hover:scale-110"
+        >
+          <Icon data={Camera01Icon} size={28} class="text-primary" />
+        </div>
+        <div class="space-y-2">
+          <h3 class="font-cherry text-lg tracking-tight text-primary">
+            Una foto por mes
+          </h3>
+          <p class="text-sm leading-relaxed text-muted-foreground">
+            Doce momentos al año. Cada mes suben la foto que más los represente y al final del año
+            tienen una historia completa.
+          </p>
+        </div>
+      </div>
+
+      <div class="group flex flex-col items-center gap-4 text-center">
+        <div
+          class="flex size-16 items-center justify-center rounded-full bg-primary/10 transition-transform group-hover:scale-110"
+        >
+          <Icon data={AddTeamIcon} size={28} class="text-primary" />
+        </div>
+        <div class="space-y-2">
+          <h3 class="font-cherry text-lg tracking-tight text-primary">
+            Solo para dos
+          </h3>
+          <p class="text-sm leading-relaxed text-muted-foreground">
+            Un espacio solo de ustedes. Invitá a tu pareja y juntos decidan qué recuerdos guardar
+            mes a mes, sin ruido.
+          </p>
+        </div>
+      </div>
+
+      <div class="group flex flex-col items-center gap-4 text-center">
+        <div
+          class="flex size-16 items-center justify-center rounded-full bg-primary/10 transition-transform group-hover:scale-110"
+        >
+          <Icon data={GlobeIcon} size={28} class="text-primary" />
+        </div>
+        <div class="space-y-2">
+          <h3 class="font-cherry text-lg tracking-tight text-primary">
+            Público o privado
+          </h3>
+          <p class="text-sm leading-relaxed text-muted-foreground">
+            Ustedes eligen quién lo ve. Compártanlo con familia y amigos, o guárdenlo como un
+            diario íntimo. La decisión es de a dos.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
 </Layout>
