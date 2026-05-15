@@ -1,0 +1,290 @@
+---
+import Layout from '@/layouts/Layout.astro'
+import Header from '@/sections/header.astro'
+import Button from '@/components/ui/Button.astro'
+import Icon from '@/components/ui/Icon.astro'
+import { actions } from 'astro:actions'
+import { eq, and } from 'drizzle-orm'
+import { env } from 'cloudflare:workers'
+import { calendars, calendarMembers } from '@/db/schema'
+import { createClient } from '@/db'
+import HeartCheckIcon from '@hugeicons/core-free-icons/HeartCheckIcon'
+import Alert01Icon from '@hugeicons/core-free-icons/Alert01Icon'
+import Cancel01Icon from '@hugeicons/core-free-icons/Cancel01Icon'
+import Logo from '@/components/branding/Logo.astro'
+import LoaderPinwheelIcon from '@hugeicons/core-free-icons/LoaderPinwheelIcon'
+
+const { token } = Astro.params
+
+if (!token) {
+  return Astro.redirect('/')
+}
+
+// Obtener invitación desde el servidor
+let invitation: Awaited<ReturnType<typeof actions.getInvitation>>['data'] | null = null
+let error: string | null = null
+
+try {
+  const result = await Astro.callAction(actions.getInvitation, { token })
+  if (result.data) {
+    invitation = result.data
+  } else if (result.error) {
+    error = result.error.message
+  }
+} catch {
+  error = 'Invitación no encontrada o inválida.'
+}
+
+// Si hay error o no hay invitación, mostraremos página de error
+const invite = invitation
+const isValid = !!invite && !error
+
+// Verificar estado del usuario logueado
+const user = Astro.locals.user
+let userHasCalendar = false
+let isAlreadyMember = false
+let isMemberNotOwner = false
+
+if (user && invitation) {
+  const db = createClient(env.DB)
+
+  // ¿Ya tiene calendario propio (es owner)?
+  const ownCalendar = await db
+    .select({ id: calendars.id, name: calendars.name })
+    .from(calendars)
+    .where(eq(calendars.ownerId, user.id))
+    .get()
+
+  // ¿Es miembro de otro calendario (no owner)?
+  let memberOfOther = false
+  if (!ownCalendar) {
+    const m = await db
+      .select({ id: calendarMembers.id })
+      .from(calendarMembers)
+      .where(eq(calendarMembers.userId, user.id))
+      .get()
+    memberOfOther = !!m
+  }
+
+  userHasCalendar = !!ownCalendar
+  isMemberNotOwner = memberOfOther
+
+  // ¿Ya es miembro del calendario invitado?
+  const member = await db
+    .select({ id: calendarMembers.id })
+    .from(calendarMembers)
+    .where(
+      and(
+        eq(calendarMembers.calendarId, invitation.calendarId),
+        eq(calendarMembers.userId, user.id),
+      ),
+    )
+    .get()
+
+  isAlreadyMember = !!member
+}
+
+const isPending = invitation?.status === 'pending'
+---
+
+<Layout title={isValid ? `Invitación a ${invitation?.calendarName}` : 'Invitación inválida'}>
+  <Header />
+  <main class="mx-auto max-w-md px-4 pt-32">
+    <div class="rounded-xl border border-border bg-card p-6 shadow-sm">
+      {
+        !isValid ? (
+          <div class="space-y-4 text-center">
+            <div class="mx-auto flex size-16 items-center justify-center rounded-full bg-destructive/10">
+              <Icon data={Cancel01Icon} size={32} class="text-destructive" />
+            </div>
+            <h1 class="text-xl font-semibold">Invitación no válida</h1>
+            <p class="text-sm text-muted-foreground">
+              {error || 'Este enlace de invitación no existe o ha expirado.'}
+            </p>
+            <div class="pt-2">
+              <a href="/">
+                <Button variant="outline">Volver al inicio</Button>
+              </a>
+            </div>
+          </div>
+        ) : (
+          <div class="space-y-6">
+            {/* Header */}
+            <div class="text-center">
+              <Logo iconSize={40} textSize="text-3xl pt-4" />
+              <h1 class="mt-6 text-xl font-semibold">Invitación de pareja</h1>
+              <p class="mt-1 text-sm text-muted-foreground">
+                <span class="font-medium text-foreground">{invite!.inviterName}</span> te invita a
+                unirte a su calendario
+              </p>
+            </div>
+
+            {/* Calendario info */}
+            <div class="rounded-lg bg-muted/60 p-4">
+              <div class="flex items-center gap-3">
+                <div class="flex size-10 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary">
+                  {invite!.calendarName.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p class="font-medium">{invite!.calendarName}</p>
+                  <p class="text-xs text-muted-foreground">{invite!.calendarYear}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Estado */}
+            {invite!.status === 'expired' && (
+              <div class="flex items-start gap-3 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                <Icon data={Alert01Icon} size={18} />
+                <p>Esta invitación ha expirado. Las invitaciones son válidas por 7 días.</p>
+              </div>
+            )}
+
+            {invite!.status === 'accepted' && (
+              <div class="flex items-start gap-3 rounded-lg bg-primary/10 p-3 text-sm text-primary">
+                <Icon data={HeartCheckIcon} size={18} />
+                <p>Esta invitación ya fue aceptada.</p>
+              </div>
+            )}
+
+            {invite!.status === 'cancelled' && (
+              <div class="flex items-start gap-3 rounded-lg bg-muted p-3 text-sm text-muted-foreground">
+                <Icon data={Cancel01Icon} size={18} />
+                <p>Esta invitación fue cancelada por el invitador.</p>
+              </div>
+            )}
+
+            {/* Acciones */}
+            {isPending && (
+              <div class="space-y-3">
+                {!user ? (
+                  <div class="flex flex-col gap-5 text-center">
+                    <p class="text-sm text-muted-foreground">
+                      Inicia sesión o crea una cuenta para aceptar esta invitación.
+                    </p>
+
+                    <a
+                      href={`/iniciar-sesion?redirect=${encodeURIComponent(`/invitacion/${token}`)}`}
+                    >
+                      <Button class="w-full" size="lg">
+                        Iniciar sesión
+                      </Button>
+                    </a>
+
+                    <p class="text-xs text-muted-foreground">
+                      ¿No tienes cuenta?{' '}
+                      <a
+                        href={`/registro?redirect=${encodeURIComponent(`/invitacion/${token}`)}`}
+                        class="text-primary underline"
+                      >
+                        Regístrate
+                      </a>
+                    </p>
+                  </div>
+                ) : isAlreadyMember ? (
+                  <div class="flex items-start gap-3 rounded-lg bg-primary/10 p-3 text-sm text-primary">
+                    <Icon data={HeartCheckIcon} size={18} />
+                    <p>Ya eres miembro de este calendario.</p>
+                  </div>
+                ) : (
+                  <>
+                    {invite!.inviteeEmail && user.email !== invite!.inviteeEmail && (
+                      <div class="flex items-start gap-3 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                        <Icon data={Alert01Icon} size={18} />
+                        <p>
+                          Esta invitación fue enviada a <strong>{invite!.inviteeEmail}</strong>. Tu
+                          email es <strong>{user.email}</strong>.
+                        </p>
+                      </div>
+                    )}
+
+                    {userHasCalendar && (
+                      <div class="flex items-start gap-3 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-600 dark:text-amber-400">
+                        <Icon data={Alert01Icon} size={18} />
+                        <p>
+                          <strong>Importante:</strong> Eres dueño de tu calendario actual. Si
+                          aceptas, se eliminará y pasarás a formar parte de{' '}
+                          <strong>{invite!.calendarName}</strong>.
+                        </p>
+                      </div>
+                    )}
+
+                    {isMemberNotOwner && (
+                      <div class="flex items-start gap-3 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-600 dark:text-amber-400">
+                        <Icon data={Alert01Icon} size={18} />
+                        <p>
+                          <strong>Importante:</strong> Ya perteneces a otro calendario. Si aceptas,
+                          saldrás de ese para unirte a <strong>{invite!.calendarName}</strong>.
+                        </p>
+                      </div>
+                    )}
+
+                    <form id="accept-form" class="space-y-3">
+                      <input type="hidden" name="token" value={token} />
+                      <Button type="submit" id="accept-btn" class="w-full" size="lg">
+                        <span class="inline-flex items-center gap-2">
+                          <span id="accept-icon">
+                            <Icon data={HeartCheckIcon} size={18} />
+                          </span>
+                          <span id="accept-spinner" style="display:none">
+                            <Icon data={LoaderPinwheelIcon} size={18} class="animate-spin" />
+                          </span>
+                          <span id="accept-text">Unirme al calendario</span>
+                        </span>
+                      </Button>
+                      <div
+                        id="accept-error"
+                        class="hidden rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+                      />
+                    </form>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      }
+    </div>
+  </main>
+</Layout>
+
+<script>
+  import { actions } from 'astro:actions'
+
+  const form = document.getElementById('accept-form') as HTMLFormElement | null
+  const btn = document.getElementById('accept-btn')
+  const icon = document.getElementById('accept-icon')
+  const spinner = document.getElementById('accept-spinner')
+  const text = document.getElementById('accept-text')
+  const errorEl = document.getElementById('accept-error')
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const fd = new FormData(form)
+    const token = fd.get('token') as string
+
+    if (!token) return
+
+    btn?.setAttribute('disabled', '')
+    if (icon) icon.style.display = 'none'
+    if (spinner) spinner.style.display = ''
+    if (text) text.textContent = 'Uniendo...'
+    if (errorEl) errorEl.classList.add('hidden')
+
+    const { data, error } = await actions.acceptInvitation(fd)
+
+    if (data?.success) {
+      window.location.href = '/calendario'
+      return
+    }
+
+    btn?.removeAttribute('disabled')
+    if (icon) icon.style.display = ''
+    if (spinner) spinner.style.display = 'none'
+    if (text) text.textContent = 'Unirme al calendario'
+    if (error && errorEl) {
+      errorEl.textContent = error.message
+      errorEl.classList.remove('hidden')
+    }
+  })
+</script>

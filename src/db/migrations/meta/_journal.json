@@ -22,6 +22,20 @@
       "when": 1778699954489,
       "tag": "0002_black_shriek",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1778861460286,
+      "tag": "0003_secret_black_knight",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1778868921729,
+      "tag": "0004_absurd_enchantress",
+      "breakpoints": true
     }
   ]
 }

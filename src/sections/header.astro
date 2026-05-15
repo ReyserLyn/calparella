@@ -8,6 +8,7 @@ import Calendar02Icon from '@hugeicons/core-free-icons/Calendar02Icon'
 import AddTeamIcon from '@hugeicons/core-free-icons/AddTeamIcon'
 import Settings01Icon from '@hugeicons/core-free-icons/Settings01Icon'
 import UserIcon from '@hugeicons/core-free-icons/UserIcon'
+import MailSend01Icon from '@hugeicons/core-free-icons/MailSend01Icon'
 import DropdownMenu from '@/components/ui/dropdown-menu/DropdownMenu.astro'
 import DropdownMenuTrigger from '@/components/ui/dropdown-menu/DropdownMenuTrigger.astro'
 import DropdownMenuContent from '@/components/ui/dropdown-menu/DropdownMenuContent.astro'
@@ -66,14 +67,28 @@ if (user) {
               <DropdownMenuSeparator />
 
               <DropdownMenuGroup>
-                <DropdownMenuItem>
-                  <a href="/calendario" class="inline-flex items-center gap-2">
+                <DropdownMenuItem class="p-0">
+                  <a
+                    href="/calendario"
+                    class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5"
+                  >
                     <Icon data={Calendar02Icon} size={14} /> Ver calendario
                   </a>
                 </DropdownMenuItem>
+                <DropdownMenuItem class="p-0">
+                  <a
+                    href="/invitaciones"
+                    class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5"
+                  >
+                    <Icon data={MailSend01Icon} size={14} /> Invitaciones
+                  </a>
+                </DropdownMenuItem>
                 {!hasCalendar && (
-                  <DropdownMenuItem>
-                    <a href="/calendario/nuevo" class="inline-flex items-center gap-2">
+                  <DropdownMenuItem class="p-0">
+                    <a
+                      href="/calendario/nuevo"
+                      class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5"
+                    >
                       <Icon data={AddTeamIcon} size={14} /> Crear calendario
                     </a>
                   </DropdownMenuItem>

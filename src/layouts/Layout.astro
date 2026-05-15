@@ -1,7 +1,7 @@
 ---
 import { Font } from 'astro:assets'
 import '../styles/globals.css'
-import { ClientRouter } from 'astro:transitions'
+// import { ClientRouter } from 'astro:transitions'
 import Background from '@/components/ui/Background.astro'
 
 interface Props {
@@ -38,7 +38,7 @@ const {
     {canonical && <link rel="canonical" href={canonical} />}
     {robots && <meta name="robots" content={robots} />}
 
-    <ClientRouter />
+    {/* <ClientRouter /> */}
   </head>
 
   <body>

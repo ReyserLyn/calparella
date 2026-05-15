@@ -17,6 +17,9 @@ import GoogleIcon from '@/assets/icons/google.svg'
 if (Astro.locals.user) {
   return Astro.redirect('/calendario')
 }
+
+const redirect = Astro.url.searchParams.get('redirect')
+const registerHref = redirect ? `/registro?redirect=${encodeURIComponent(redirect)}` : '/registro'
 ---
 
 <Layout title="Iniciar sesión - CalParella">
@@ -31,7 +34,7 @@ if (Astro.locals.user) {
               <FieldDescription>
                 ¿No tienes cuenta?
                 <a
-                  href="/registro"
+                  href={registerHref}
                   data-astro-prefetch
                   class="text-primary underline-offset-4 hover:underline">Regístrate</a
                 >
@@ -82,7 +85,7 @@ if (Astro.locals.user) {
               </Button>
             </Field>
 
-            <FieldSeparator>O continuá con</FieldSeparator>
+            <FieldSeparator>O continúa con</FieldSeparator>
 
             <Field class="grid gap-4">
               <Button variant="outline" type="button">
@@ -117,7 +120,7 @@ if (Astro.locals.user) {
 
   // ── Schema de validación (Zod 4) ──────────────────────────
   const loginSchema = z.object({
-    email: z.email({ error: 'Ingresá un correo electrónico válido.' }),
+    email: z.email({ error: 'Ingresa un correo electrónico válido.' }),
     password: z.string().min(1, { error: 'La contraseña es obligatoria.' }),
   })
 
@@ -233,7 +236,9 @@ if (Astro.locals.user) {
       if (spinner) spinner.style.display = 'none'
 
       if (!error) {
-        window.location.href = '/calendario'
+        const params = new URLSearchParams(window.location.search)
+        const redirect = params.get('redirect') || '/calendario'
+        window.location.href = redirect
         return
       }
 

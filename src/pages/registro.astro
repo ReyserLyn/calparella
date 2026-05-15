@@ -17,6 +17,11 @@ import GoogleIcon from '@/assets/icons/google.svg'
 if (Astro.locals.user) {
   return Astro.redirect('/calendario')
 }
+
+const redirect = Astro.url.searchParams.get('redirect')
+const loginHref = redirect
+  ? `/iniciar-sesion?redirect=${encodeURIComponent(redirect)}`
+  : '/iniciar-sesion'
 ---
 
 <Layout title="Crear cuenta - CalParella">
@@ -31,7 +36,7 @@ if (Astro.locals.user) {
               <FieldDescription>
                 ¿Ya tienes cuenta?
                 <a
-                  href="/iniciar-sesion"
+                  href={loginHref}
                   data-astro-prefetch
                   class="text-primary underline-offset-4 hover:underline">Inicia sesión</a
                 >
@@ -95,7 +100,7 @@ if (Astro.locals.user) {
               </Button>
             </Field>
 
-            <FieldSeparator>O registrate con</FieldSeparator>
+            <FieldSeparator>O regístrate con</FieldSeparator>
 
             <Field class="grid gap-4">
               <Button variant="outline" type="button">
@@ -134,7 +139,7 @@ if (Astro.locals.user) {
       .string()
       .min(2, { error: 'El nombre debe tener al menos 2 caracteres.' })
       .max(100, { error: 'El nombre es demasiado largo.' }),
-    email: z.email({ error: 'Ingresá un correo electrónico válido.' }),
+    email: z.email({ error: 'Ingresa un correo electrónico válido.' }),
     password: z
       .string()
       .min(8, { error: 'La contraseña debe tener al menos 8 caracteres.' })
@@ -254,7 +259,9 @@ if (Astro.locals.user) {
 
       if (!error) {
         ;(form as HTMLFormElement).reset()
-        window.location.href = '/calendario'
+        const params = new URLSearchParams(window.location.search)
+        const redirect = params.get('redirect') || '/calendario'
+        window.location.href = redirect
         return
       }
 

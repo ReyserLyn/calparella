@@ -1,0 +1,696 @@
+---
+import Layout from '@/layouts/Layout.astro'
+import Header from '@/sections/header.astro'
+import Card from '@/components/ui/card/Card.astro'
+import CardHeader from '@/components/ui/card/CardHeader.astro'
+import CardTitle from '@/components/ui/card/CardTitle.astro'
+import CardDescription from '@/components/ui/card/CardDescription.astro'
+import CardContent from '@/components/ui/card/CardContent.astro'
+import FieldGroup from '@/components/ui/field/FieldGroup.astro'
+import Field from '@/components/ui/field/Field.astro'
+import FieldLabel from '@/components/ui/field/FieldLabel.astro'
+import FieldError from '@/components/ui/field/FieldError.astro'
+import Input from '@/components/ui/Input.astro'
+import Button from '@/components/ui/Button.astro'
+import Icon from '@/components/ui/Icon.astro'
+import Separator from '@/components/ui/Separator.astro'
+import { env } from 'cloudflare:workers'
+import { eq, and, gt } from 'drizzle-orm'
+import { calendars, invitations, users, calendarMembers } from '@/db/schema'
+import { createClient } from '@/db'
+import MailSend01Icon from '@hugeicons/core-free-icons/MailSend01Icon'
+import Cancel01Icon from '@hugeicons/core-free-icons/Cancel01Icon'
+import Copy01Icon from '@hugeicons/core-free-icons/Copy01Icon'
+import Link01Icon from '@hugeicons/core-free-icons/Link01Icon'
+import InformationCircleIcon from '@hugeicons/core-free-icons/InformationCircleIcon'
+import ArrowRight01Icon from '@hugeicons/core-free-icons/ArrowRight01Icon'
+import Calendar02Icon from '@hugeicons/core-free-icons/Calendar02Icon'
+import AddTeamIcon from '@hugeicons/core-free-icons/AddTeamIcon'
+import HeartCheckIcon from '@hugeicons/core-free-icons/HeartCheckIcon'
+import LoaderPinwheelIcon from '@hugeicons/core-free-icons/LoaderPinwheelIcon'
+
+if (!Astro.locals.user) {
+  return Astro.redirect('/iniciar-sesion')
+}
+
+const user = Astro.locals.user
+const db = createClient(env.DB)
+const now = new Date()
+
+// 1. ¿Es owner?
+const myCalendar = await db
+  .select({ id: calendars.id, name: calendars.name, slug: calendars.slug })
+  .from(calendars)
+  .where(eq(calendars.ownerId, user.id))
+  .get()
+
+// 2. ¿Es miembro de algún calendario?
+const myMembership = await db
+  .select({ calendarId: calendarMembers.calendarId })
+  .from(calendarMembers)
+  .where(eq(calendarMembers.userId, user.id))
+  .get()
+
+const isOwner = !!myCalendar
+const isMember = !!myMembership
+
+// 3. Si es owner, ¿cuántos miembros tiene su calendario?
+let memberCount = 0
+if (myCalendar) {
+  const members = await db
+    .select({ id: calendarMembers.id })
+    .from(calendarMembers)
+    .where(eq(calendarMembers.calendarId, myCalendar.id))
+    .all()
+  memberCount = members.length
+}
+
+const isCalendarFull = isOwner && memberCount >= 2
+const canInvite = isOwner && !isCalendarFull
+
+// 4. Invitaciones ENVIADAS (solo si es owner)
+let sentInvitations: (typeof invitations.$inferSelect)[] = []
+if (myCalendar) {
+  sentInvitations = await db
+    .select()
+    .from(invitations)
+    .where(and(eq(invitations.calendarId, myCalendar.id), eq(invitations.hidden, false)))
+    .orderBy(invitations.createdAt)
+    .all()
+}
+
+// 5. Transformar enviadas con labels, colores, días
+const statusLabels: Record<string, string> = {
+  pending: 'Pendiente',
+  accepted: 'Aceptada',
+  declined: 'Rechazada',
+  cancelled: 'Cancelada',
+  expired: 'Expirada',
+}
+const statusColors: Record<string, string> = {
+  pending: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  accepted: 'bg-primary/10 text-primary',
+  declined: 'bg-muted text-muted-foreground',
+  cancelled: 'bg-muted text-muted-foreground',
+  expired: 'bg-destructive/10 text-destructive',
+}
+
+const sentInvitationsFormatted = sentInvitations.map((inv) => {
+  const isPending = inv.status === 'pending'
+  const isExpired = new Date(inv.expiresAt) < now && isPending
+  const displayStatus = isExpired ? 'expired' : inv.status
+  const daysLeft = isPending
+    ? Math.max(
+        1,
+        Math.ceil((new Date(inv.expiresAt).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+      )
+    : 0
+  return {
+    ...inv,
+    isExpired,
+    displayStatus,
+    statusLabel: statusLabels[displayStatus] ?? displayStatus,
+    statusColorClass: statusColors[displayStatus] ?? 'bg-muted text-muted-foreground',
+    daysLeft,
+    isLinkOnly: !inv.inviteeEmail,
+  }
+})
+
+// 6. Invitaciones RECIBIDAS (solo si NO está ya en un calendario — no puede unirse a otro)
+let receivedInvitations: any[] = []
+if (!isMember) {
+  receivedInvitations = await db
+    .select({
+      id: invitations.id,
+      token: invitations.token,
+      status: invitations.status,
+      expiresAt: invitations.expiresAt,
+      createdAt: invitations.createdAt,
+      calendarId: invitations.calendarId,
+      inviterName: users.name,
+      inviterEmail: users.email,
+      calendarName: calendars.name,
+      calendarYear: calendars.year,
+    })
+    .from(invitations)
+    .innerJoin(calendars, eq(invitations.calendarId, calendars.id))
+    .innerJoin(users, eq(invitations.inviterId, users.id))
+    .where(
+      and(
+        eq(invitations.inviteeEmail, user.email),
+        eq(invitations.status, 'pending'),
+        gt(invitations.expiresAt, now),
+      ),
+    )
+    .all()
+}
+
+const hasSent = sentInvitations.length > 0
+const hasReceived = receivedInvitations.length > 0
+---
+
+<Layout title="Invitaciones - CalParella">
+  <Header />
+  <main class="mx-auto max-w-3xl px-4 pt-28 pb-12">
+    <div class="mb-8 flex items-center gap-3">
+      <div class="flex size-10 items-center justify-center rounded-full bg-primary/10">
+        <Icon data={MailSend01Icon} size={20} class="text-primary" />
+      </div>
+      <div>
+        <h1 class="text-2xl font-semibold tracking-tight">Invitaciones</h1>
+        <p class="text-sm text-muted-foreground">Gestiona tus invitaciones de pareja</p>
+      </div>
+    </div>
+
+    {/* ── ESTADO 1: Sin calendario ni membresía ──────────────── */}
+    {
+      !isOwner && !isMember && (
+        <Card>
+          <CardContent class="flex flex-col items-center gap-4 py-12 text-center">
+            <div class="flex size-16 items-center justify-center rounded-full bg-muted">
+              <Icon data={Calendar02Icon} size={32} class="text-muted-foreground" />
+            </div>
+            <div class="space-y-1">
+              <h2 class="text-lg font-semibold">Necesitas un calendario</h2>
+              <p class="max-w-sm text-sm text-muted-foreground">
+                Para invitar a tu pareja, primero tienes que crear un calendario. Es gratis y solo
+                toma un minuto.
+              </p>
+            </div>
+            <a href="/calendario/nuevo">
+              <Button size="lg">
+                <span class="inline-flex items-center gap-2">
+                  <Icon data={AddTeamIcon} size={16} />
+                  Crear calendario
+                </span>
+              </Button>
+            </a>
+          </CardContent>
+        </Card>
+      )
+    }
+
+    {/* ── ESTADO 2: Dueño — puede invitar ────────────────────── */}
+    {
+      canInvite && (
+        <div class="space-y-8">
+          {/* Form: Invitar */}
+          <Card>
+            <CardHeader>
+              <CardTitle class="text-base">Invitar a tu pareja</CardTitle>
+              <CardDescription>
+                Envía una invitación por email. Tu pareja recibirá un link para unirse a{' '}
+                <strong>{myCalendar!.name}</strong>.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form id="invite-form" method="POST" novalidate>
+                <FieldGroup class="gap-4">
+                  <Field id="field-email">
+                    <FieldLabel for="inviteeEmail">Email de tu pareja</FieldLabel>
+                    <div class="relative">
+                      <Icon
+                        data={MailSend01Icon}
+                        size={16}
+                        class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
+                      />
+                      <Input
+                        id="inviteeEmail"
+                        name="inviteeEmail"
+                        type="email"
+                        placeholder="pareja@ejemplo.com"
+                        autocomplete="email"
+                        class="pl-9"
+                      />
+                    </div>
+                    <FieldError forceMount class="hidden" />
+                  </Field>
+
+                  <input type="hidden" name="calendarId" value={myCalendar!.id} />
+
+                  <div
+                    id="error-container"
+                    class="hidden rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+                  />
+                  <div
+                    id="success-container"
+                    class="hidden rounded-lg bg-primary/10 p-3 text-sm text-primary"
+                  />
+
+                  <Button type="submit" id="submit-button" class="w-full" size="lg">
+                    <span class="inline-flex items-center gap-2">
+                      <span id="submit-icon">
+                        <Icon data={MailSend01Icon} size={16} />
+                      </span>
+                      <span id="submit-spinner" style="display:none">
+                        <Icon data={LoaderPinwheelIcon} size={16} class="animate-spin" />
+                      </span>
+                      <span id="submit-text">Enviar invitación</span>
+                    </span>
+                  </Button>
+
+                  <div class="flex items-center gap-2">
+                    <span class="h-px flex-1 bg-border" />
+                    <span class="text-xs text-muted-foreground">o</span>
+                    <span class="h-px flex-1 bg-border" />
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    id="link-only-btn"
+                    class="w-full"
+                    size="lg"
+                  >
+                    <span class="inline-flex items-center gap-2">
+                      <span id="link-only-icon">
+                        <Icon data={Link01Icon} size={16} />
+                      </span>
+                      <span id="link-only-spinner" style="display:none">
+                        <Icon data={LoaderPinwheelIcon} size={16} class="animate-spin" />
+                      </span>
+                      <span id="link-only-text">Crear enlace para compartir</span>
+                    </span>
+                  </Button>
+                </FieldGroup>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Enviadas */}
+          {hasSent ? (
+            <div class="space-y-4">
+              <h2 class="text-sm font-medium tracking-wider text-muted-foreground uppercase">
+                Enviadas
+              </h2>
+              <div class="space-y-3">
+                {sentInvitationsFormatted.map((inv) => (
+                  <Card>
+                    <CardContent class="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                          {inv.isLinkOnly ? (
+                            <span class="text-sm font-medium">Enlace abierto</span>
+                          ) : (
+                            <span class="text-sm font-medium">{inv.inviteeEmail}</span>
+                          )}
+                          <span
+                            class={`rounded-full px-2 py-0.5 text-[11px] font-medium ${inv.statusColorClass}`}
+                          >
+                            {inv.statusLabel}
+                          </span>
+                        </div>
+                        {inv.status === 'pending' && !inv.isExpired && (
+                          <p class="text-xs text-muted-foreground">
+                            {inv.daysLeft === 1
+                              ? 'Expira mañana'
+                              : `Expira en ${inv.daysLeft} días`}
+                          </p>
+                        )}
+                      </div>
+                      {inv.status === 'pending' && !inv.isExpired && (
+                        <div class="flex items-center gap-2">
+                          <div class="flex items-center gap-2 overflow-hidden rounded-lg border border-border bg-muted/60 px-3 py-2">
+                            <Icon
+                              data={Link01Icon}
+                              size={14}
+                              class="shrink-0 text-muted-foreground"
+                            />
+                            <input
+                              type="text"
+                              readonly
+                              value={`${Astro.url.origin}/invitacion/${inv.token}`}
+                              class="w-48 truncate bg-transparent text-xs text-muted-foreground outline-none"
+                            />
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              class="bg-muted/60"
+                              data-copy-link={`${Astro.url.origin}/invitacion/${inv.token}`}
+                            >
+                              <Icon data={Copy01Icon} size={14} />
+                            </Button>
+                          </div>
+                          <form class="cancel-form inline">
+                            <input type="hidden" name="invitationId" value={inv.id} />
+                            <Button type="submit" variant="destructive" size="sm">
+                              <Icon data={Cancel01Icon} size={14} />
+                            </Button>
+                          </form>
+                        </div>
+                      )}
+                      {inv.status !== 'pending' && (
+                        <form class="hide-form inline">
+                          <input type="hidden" name="invitationId" value={inv.id} />
+                          <Button
+                            type="submit"
+                            variant="ghost"
+                            size="sm"
+                            class="text-muted-foreground hover:text-foreground"
+                          >
+                            Ocultar
+                          </Button>
+                        </form>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div class="flex items-center gap-3 rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+              <Icon data={InformationCircleIcon} size={18} />
+              <p>No enviaste invitaciones todavía.</p>
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    {/* ── ESTADO 3: Dueño — calendario completo ───────────────── */}
+    {
+      isCalendarFull && (
+        <Card>
+          <CardContent class="flex flex-col items-center gap-4 py-12 text-center">
+            <div class="flex size-16 items-center justify-center rounded-full bg-primary/10">
+              <Icon data={HeartCheckIcon} size={32} class="text-primary" />
+            </div>
+            <div class="space-y-1">
+              <h2 class="text-lg font-semibold">Pareja completa</h2>
+              <p class="max-w-sm text-sm text-muted-foreground">
+                Tu pareja ya forma parte de <strong>{myCalendar!.name}</strong>. Ambos pueden subir
+                fotos y editar el calendario.
+              </p>
+            </div>
+            <a href="/calendario">
+              <Button variant="outline">
+                <span class="inline-flex items-center gap-2">
+                  <Icon data={Calendar02Icon} size={16} />
+                  Ver calendario
+                </span>
+              </Button>
+            </a>
+          </CardContent>
+        </Card>
+      )
+    }
+
+    {/* ── ESTADO 4: Miembro (invitado) ────────────────────────── */}
+    {
+      isMember && !isOwner && (
+        <Card>
+          <CardContent class="flex flex-col items-center gap-4 py-12 text-center">
+            <div class="flex size-16 items-center justify-center rounded-full bg-primary/10">
+              <Icon data={Calendar02Icon} size={32} class="text-primary" />
+            </div>
+            <div class="space-y-1">
+              <h2 class="text-lg font-semibold">Ya perteneces a un calendario</h2>
+              <p class="max-w-sm text-sm text-muted-foreground">
+                Tu pareja te invitó a su calendario. Solo el dueño puede gestionar invitaciones.
+              </p>
+            </div>
+            <a href="/calendario">
+              <Button variant="outline">
+                <span class="inline-flex items-center gap-2">
+                  <Icon data={Calendar02Icon} size={16} />
+                  Ver calendario
+                </span>
+              </Button>
+            </a>
+          </CardContent>
+        </Card>
+      )
+    }
+
+    {/* ── Recibidas (solo si no está en un calendario) ────────── */}
+    {
+      !isMember &&
+        (hasReceived ? (
+          <div class="mt-8 space-y-4">
+            <Separator />
+            <h2 class="text-sm font-medium tracking-wider text-muted-foreground uppercase">
+              Recibidas
+            </h2>
+            <div class="space-y-3">
+              {receivedInvitations.map((inv) => (
+                <Card>
+                  <CardContent class="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex items-start gap-3">
+                      <div class="flex size-10 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                        {inv.inviterName.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p class="text-sm font-medium">
+                          {inv.inviterName} te invitó a <strong>{inv.calendarName}</strong>
+                        </p>
+                        <p class="text-xs text-muted-foreground">
+                          Expira el {new Date(inv.expiresAt).toLocaleDateString('es-ES')}
+                        </p>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <a href={`/invitacion/${inv.token}`}>
+                        <Button size="sm">
+                          <span class="inline-flex items-center gap-2">
+                            <Icon data={ArrowRight01Icon} size={14} />
+                            Ver invitación
+                          </span>
+                        </Button>
+                      </a>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div class="mt-8 space-y-4">
+            <Separator />
+            <div class="flex items-center gap-3 rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+              <Icon data={InformationCircleIcon} size={18} />
+              <p>No tienes invitaciones pendientes.</p>
+            </div>
+          </div>
+        ))
+    }
+  </main>
+</Layout>
+
+<script>
+  import { z } from 'astro/zod'
+  import { actions } from 'astro:actions'
+
+  const inviteSchema = z.object({
+    inviteeEmail: z.email({ message: 'Ingresa un correo electrónico válido.' }),
+  })
+
+  // ── DOM refs: form invitar ──────────────────────────────
+  const form = document.getElementById('invite-form') as HTMLFormElement | null
+  const emailInput = document.getElementById('inviteeEmail') as HTMLInputElement | null
+  const fieldEmail = document.getElementById('field-email')
+  const submitButton = document.getElementById('submit-button')
+  const submitIcon = document.getElementById('submit-icon')
+  const spinner = document.getElementById('submit-spinner')
+  const submitText = document.getElementById('submit-text')
+  const errorContainer = document.getElementById('error-container')
+  const successContainer = document.getElementById('success-container')
+
+  type FieldId = 'inviteeEmail'
+  const fieldMap: Record<FieldId, { input: HTMLInputElement | null; field: HTMLElement | null }> = {
+    inviteeEmail: { input: emailInput, field: fieldEmail },
+  }
+
+  // ── Helpers ─────────────────────────────────────────────
+  function getFieldError(field: HTMLElement): HTMLElement | null {
+    return field.querySelector('[data-slot="field-error"]')
+  }
+
+  function setFieldError(fieldId: FieldId, message: string | null) {
+    const { input, field } = fieldMap[fieldId]
+    if (!field || !input) return
+    const errorEl = getFieldError(field)
+    if (!errorEl) return
+    if (message) {
+      input.setAttribute('aria-invalid', 'true')
+      field.dataset.invalid = 'true'
+      errorEl.textContent = message
+      errorEl.classList.remove('hidden')
+    } else {
+      input.removeAttribute('aria-invalid')
+      delete field.dataset.invalid
+      errorEl.textContent = ''
+      errorEl.classList.add('hidden')
+    }
+  }
+
+  function validateField(fieldId: FieldId): string | null {
+    const value = fieldMap[fieldId].input?.value?.trim() ?? ''
+    const result = inviteSchema.shape[fieldId].safeParse(value)
+    if (!result.success) {
+      const msg = result.error.issues[0]?.message || 'Valor inválido'
+      setFieldError(fieldId, msg)
+      return msg
+    }
+    setFieldError(fieldId, null)
+    return null
+  }
+
+  function resetErrors() {
+    setFieldError('inviteeEmail', null)
+  }
+
+  // ── Submit: enviar invitación ───────────────────────────
+  if (
+    form &&
+    submitButton &&
+    submitIcon &&
+    spinner &&
+    submitText &&
+    errorContainer &&
+    successContainer
+  ) {
+    emailInput?.addEventListener('input', () => {
+      if (fieldEmail && 'invalid' in fieldEmail.dataset) {
+        validateField('inviteeEmail')
+      }
+    })
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      errorContainer.classList.add('hidden')
+      errorContainer.textContent = ''
+      successContainer.classList.add('hidden')
+      successContainer.textContent = ''
+      resetErrors()
+
+      if (validateField('inviteeEmail')) return
+
+      submitButton.setAttribute('disabled', '')
+      submitIcon.style.display = 'none'
+      spinner.style.display = ''
+      submitText.textContent = 'Enviando...'
+
+      const formData = new FormData(form)
+      const { data, error } = await actions.sendInvitation(formData)
+
+      submitIcon.style.display = ''
+      spinner.style.display = 'none'
+      submitText.textContent = 'Enviar invitación'
+      submitButton.removeAttribute('disabled')
+
+      if (data?.success) {
+        successContainer.textContent = 'Invitación enviada correctamente.'
+        successContainer.classList.remove('hidden')
+        form.reset()
+        setTimeout(() => window.location.reload(), 1200)
+        return
+      }
+
+      if (error) {
+        errorContainer.textContent = error.message
+        errorContainer.classList.remove('hidden')
+      }
+    })
+  }
+
+  // ── Crear enlace (sin email) ────────────────────────────
+  const linkOnlyBtn = document.getElementById('link-only-btn')
+  const linkOnlyIcon = document.getElementById('link-only-icon')
+  const linkOnlySpinner = document.getElementById('link-only-spinner')
+  const linkOnlyText = document.getElementById('link-only-text')
+
+  linkOnlyBtn?.addEventListener('click', async () => {
+    if (errorContainer) {
+      errorContainer.classList.add('hidden')
+      errorContainer.textContent = ''
+    }
+    if (successContainer) {
+      successContainer.classList.add('hidden')
+      successContainer.textContent = ''
+    }
+
+    linkOnlyBtn.setAttribute('disabled', '')
+    if (linkOnlyIcon) linkOnlyIcon.style.display = 'none'
+    if (linkOnlySpinner) linkOnlySpinner.style.display = ''
+    if (linkOnlyText) linkOnlyText.textContent = 'Creando enlace...'
+
+    const fd = new FormData()
+    fd.set(
+      'calendarId',
+      (document.querySelector('[name="calendarId"]') as HTMLInputElement)?.value || '',
+    )
+
+    const { data, error } = await actions.sendInvitation(fd)
+
+    linkOnlyBtn.removeAttribute('disabled')
+    if (linkOnlyIcon) linkOnlyIcon.style.display = ''
+    if (linkOnlySpinner) linkOnlySpinner.style.display = 'none'
+    if (linkOnlyText) linkOnlyText.textContent = 'Crear enlace para compartir'
+
+    if (data?.success) {
+      if (successContainer) {
+        successContainer.textContent =
+          'Link creado. Cópialo y compártelo por WhatsApp o donde quieras.'
+        successContainer.classList.remove('hidden')
+      }
+      setTimeout(() => window.location.reload(), 1500)
+      return
+    }
+
+    if (error && errorContainer) {
+      errorContainer.textContent = error.message
+      errorContainer.classList.remove('hidden')
+    }
+  })
+
+  // ── Copy link ───────────────────────────────────────────
+  document.querySelectorAll('[data-copy-link]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const link = btn.getAttribute('data-copy-link')
+      if (!link) return
+      try {
+        await navigator.clipboard.writeText(link)
+        const original = btn.innerHTML
+        btn.innerHTML = '<span class="text-xs">Copiado!</span>'
+        setTimeout(() => {
+          btn.innerHTML = original
+        }, 2000)
+      } catch {
+        /* fallback silencioso */
+      }
+    })
+  })
+
+  // ── Cancelar invitación ─────────────────────────────────
+  document.querySelectorAll('.cancel-form').forEach((formEl) => {
+    formEl.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const fd = new FormData(formEl as HTMLFormElement)
+      const { data, error } = await actions.cancelInvitation(fd)
+      if (data?.success) {
+        window.location.reload()
+        return
+      }
+      if (error) {
+        alert(error.message)
+      }
+    })
+  })
+
+  // ── Ocultar invitación (soft-delete) ────────────────────
+  document.querySelectorAll('.hide-form').forEach((formEl) => {
+    formEl.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const fd = new FormData(formEl as HTMLFormElement)
+      const { data, error } = await actions.hideInvitation(fd)
+      if (data?.success) {
+        window.location.reload()
+        return
+      }
+      if (error) {
+        alert(error.message)
+      }
+    })
+  })
+</script>

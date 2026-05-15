@@ -192,9 +192,15 @@ export const invitations = sqliteTable(
       .references(() => users.id),
     inviteeEmail: text('invitee_email').notNull(),
     inviteeId: text('invitee_id').references(() => users.id),
-    status: text('status', { enum: ['pending', 'accepted', 'declined', 'cancelled'] })
+    token: text('token').notNull().unique(),
+    role: text('role', { enum: ['admin', 'viewer'] })
+      .default('admin')
+      .notNull(),
+    status: text('status', { enum: ['pending', 'accepted', 'declined', 'cancelled', 'expired'] })
       .default('pending')
       .notNull(),
+    hidden: integer('hidden', { mode: 'boolean' }).default(false).notNull(),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
@@ -203,7 +209,10 @@ export const invitations = sqliteTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (table) => [uniqueIndex('inv_calendar_email_idx').on(table.calendarId, table.inviteeEmail)],
+  (table) => [
+    uniqueIndex('inv_calendar_email_idx').on(table.calendarId, table.inviteeEmail),
+    uniqueIndex('inv_token_idx').on(table.token),
+  ],
 )
 
 // ── Relaciones ─────────────────────────────────────────────
