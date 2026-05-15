@@ -1,15 +1,21 @@
 ---
 import { cn } from '@/lib/utils'
+import Icon from '@/components/ui/Icon.astro'
+import Camera01Icon from '@hugeicons/core-free-icons/Camera01Icon'
+import Edit01Icon from '@hugeicons/core-free-icons/Edit01Icon'
+import Delete02Icon from '@hugeicons/core-free-icons/Delete02Icon'
+import MoreHorizontalIcon from '@hugeicons/core-free-icons/MoreHorizontalIcon'
 
 interface Props {
   month: number
   year: number
+  calendarId?: string
   photoUrl?: string
   photoDay?: number
   class?: string
 }
 
-const { month, year, photoUrl, photoDay, class: className } = Astro.props
+const { month, year, calendarId, photoUrl, photoDay, class: className } = Astro.props
 
 const monthNames = [
   'ENE',
@@ -30,12 +36,12 @@ const daysInMonth = new Date(year, month, 0).getDate()
 const firstDayOfWeek = new Date(year, month - 1, 1).getDay()
 const startOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1
 const dayHeaders = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+const hasPhoto = !!photoUrl
 
 const days: (number | null)[] = []
 for (let i = 0; i < startOffset; i++) days.push(null)
 for (let i = 1; i <= daysInMonth; i++) days.push(i)
 
-// Normalizar a 6 filas × 7 columnas para altura uniforme
 const normalized: (number | null)[] = []
 const maxRows = 6
 const cols = 7
@@ -49,10 +55,13 @@ for (let row = 0; row < maxRows; row++) {
 
 <article
   class={cn(
-    'group/card flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:shadow-md',
+    'group/card relative flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:shadow-md',
     className,
   )}
+  data-month={month}
+  data-photo-day={photoDay ?? ''}
 >
+  <!-- Área de foto con overlay de acciones -->
   <div class="relative aspect-4/3 w-full overflow-hidden bg-muted">
     {
       photoUrl ? (
@@ -63,16 +72,68 @@ for (let row = 0; row < maxRows; row++) {
           loading="lazy"
         />
       ) : (
-        <div class="flex size-full items-center justify-center bg-muted">
+        <div class="flex size-full items-center justify-center">
           <span class="text-5xl text-muted-foreground/30 select-none">{monthName}</span>
         </div>
       )
     }
+
+    <!-- Botón mobile: toca para ver acciones -->
+    <button
+      type="button"
+      class="actions-toggle absolute top-2 right-2 z-10 flex size-8 cursor-pointer items-center justify-center rounded-full bg-black/40 text-white shadow-sm transition-transform active:scale-95 md:hidden"
+      title="Acciones"
+      aria-label="Mostrar acciones"
+    >
+      <Icon data={MoreHorizontalIcon} size={18} />
+    </button>
+
+    <!-- Overlay de acciones (hover desktop / tap mobile) -->
+    <div
+      class="actions-overlay absolute inset-0 flex items-center justify-center gap-3 bg-black/40 opacity-0 transition-opacity md:group-hover/card:opacity-100"
+      data-actions={calendarId || ''}
+    >
+      {
+        hasPhoto ? (
+          <>
+            <button
+              type="button"
+              class="flex size-9 cursor-pointer items-center justify-center rounded-full bg-white/90 text-foreground shadow-sm transition-transform hover:scale-110 active:scale-95"
+              title="Editar foto"
+              data-action="edit"
+              data-month={month}
+            >
+              <Icon data={Edit01Icon} size={16} />
+            </button>
+            <button
+              type="button"
+              class="flex size-9 cursor-pointer items-center justify-center rounded-full bg-white/90 text-destructive shadow-sm transition-transform hover:scale-110 active:scale-95"
+              title="Eliminar foto"
+              data-action="delete"
+              data-month={month}
+            >
+              <Icon data={Delete02Icon} size={16} />
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            class="flex size-10 cursor-pointer items-center justify-center rounded-full bg-white/90 text-primary shadow-sm transition-transform hover:scale-110 active:scale-95"
+            title="Subir foto"
+            data-action="upload"
+            data-month={month}
+          >
+            <Icon data={Camera01Icon} size={18} />
+          </button>
+        )
+      }
+    </div>
   </div>
 
-  <div class="flex items-stretch gap-2 border-t border-border bg-background/50 px-3 py-2">
-    <div class="flex shrink-0 flex-col items-center justify-center">
-      <span class="font-cherry text-5xl leading-none tracking-tight text-primary">{monthName}</span>
+  <!-- Footer -->
+  <div class="flex items-stretch gap-2 border-t border-border bg-background/50 px-3 py-4">
+    <div class="flex shrink-0 flex-col justify-center pr-2">
+      <span class="font-cherry text-3xl leading-none tracking-tight text-primary">{monthName}</span>
       <span class="text-xs text-muted-foreground">{year}</span>
     </div>
 
@@ -105,3 +166,49 @@ for (let row = 0; row < maxRows; row++) {
     </div>
   </div>
 </article>
+
+<script>
+  // Toggle mobile: mostrar/ocultar overlay
+  document.querySelectorAll('.actions-toggle').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const overlay = btn.parentElement?.querySelector('.actions-overlay')
+      if (overlay) {
+        const isVisible = overlay.classList.contains('!opacity-100')
+        if (isVisible) {
+          overlay.classList.remove('!opacity-100')
+        } else {
+          overlay.classList.add('!opacity-100')
+        }
+      }
+    })
+  })
+
+  // Tap en los botones de acción
+  document.querySelectorAll('.actions-overlay').forEach((overlay) => {
+    overlay.addEventListener('click', function (e) {
+      const target = e.target as HTMLElement
+      const btn = target.closest('[data-action]') as HTMLButtonElement | null
+      if (!btn) return
+
+      const action = btn.dataset.action
+      const month = btn.dataset.month
+      const calendarId = (overlay as HTMLElement).dataset.actions
+      const article = overlay.closest('article')
+      const photoDay = article?.getAttribute('data-photo-day')
+
+      window.dispatchEvent(
+        new CustomEvent('photo-action', {
+          detail: {
+            action,
+            month: Number(month),
+            calendarId,
+            photoDay: photoDay ? Number(photoDay) : null,
+          },
+        }),
+      )
+
+      // Ocultar overlay en mobile
+      overlay.classList.remove('!opacity-100')
+    })
+  })
+</script>

@@ -2,9 +2,10 @@
 import Layout from '@/layouts/Layout.astro'
 import Header from '@/sections/header.astro'
 import CalendarGrid from '@/components/calendario/CalendarGrid.astro'
+import PhotoDialog from '@/components/calendario/PhotoDialog.astro'
 import { env } from 'cloudflare:workers'
 import { eq } from 'drizzle-orm'
-import { calendars, calendarMembers } from '@/db/schema'
+import { calendars, calendarMembers, calendarPhotos } from '@/db/schema'
 import { createClient } from '@/db'
 
 if (!Astro.locals.user) {
@@ -13,6 +14,20 @@ if (!Astro.locals.user) {
 
 const user = Astro.locals.user
 const db = createClient(env.DB)
+const monthNames = [
+  'ENERO',
+  'FEBRERO',
+  'MARZO',
+  'ABRIL',
+  'MAYO',
+  'JUNIO',
+  'JULIO',
+  'AGOSTO',
+  'SEPTIEMBRE',
+  'OCTUBRE',
+  'NOVIEMBRE',
+  'DICIEMBRE',
+]
 
 const memberOf = await db
   .select({ calendar: calendars })
@@ -22,11 +37,28 @@ const memberOf = await db
   .get()
 
 const calendar = memberOf?.calendar ?? null
+
+// Fotos del calendario actual
+const photos = calendar
+  ? await db
+      .select({
+        month: calendarPhotos.month,
+        imageKey: calendarPhotos.imageKey,
+        day: calendarPhotos.day,
+      })
+      .from(calendarPhotos)
+      .where(eq(calendarPhotos.calendarId, calendar.id))
+      .all()
+  : []
 ---
 
 <Layout title="Calendario - CalParella">
   <Header />
-  <main class="mx-auto max-w-5xl px-4 pt-24">
+  <main
+    class="mx-auto max-w-5xl px-4 pt-24"
+    data-calendar-id={calendar?.id ?? ''}
+    data-month-names={JSON.stringify(monthNames)}
+  >
     <section class="space-y-6">
       <div class="flex items-center gap-4">
         <div
@@ -55,13 +87,21 @@ const calendar = memberOf?.calendar ?? null
                 {calendar.isPublic ? '🌐 Público' : '🔒 Privado'}
               </span>
             </div>
-            <CalendarGrid year={calendar.year} />
+            <CalendarGrid
+              year={calendar.year}
+              calendarId={calendar.id}
+              photos={photos.map((p) => ({
+                month: p.month,
+                day: p.day ?? undefined,
+                url: `/api/photo/${p.imageKey}`,
+              }))}
+            />
           </div>
         ) : (
           <div class="rounded-lg border p-6 text-center">
-            <h2 class="mb-2 text-lg font-semibold">Todavía no tenés un calendario</h2>
+            <h2 class="mb-2 text-lg font-semibold">Todavía no tienes un calendario</h2>
             <p class="mb-4 text-sm text-muted-foreground">
-              Creá uno nuevo para empezar a guardar recuerdos con tu pareja.
+              Crea uno nuevo para empezar a guardar recuerdos con tu pareja.
             </p>
             <a
               href="/calendario/nuevo"
@@ -75,3 +115,258 @@ const calendar = memberOf?.calendar ?? null
     </section>
   </main>
 </Layout>
+
+<PhotoDialog />
+
+<script>
+  import { z } from 'astro/zod'
+  import { actions } from 'astro:actions'
+
+  const main = document.querySelector('[data-calendar-id]')
+  const calendarId = main?.getAttribute('data-calendar-id') || ''
+  const monthNames = JSON.parse(main?.getAttribute('data-month-names') || '[]')
+
+  // ── Schema Zod ──────────────────────────────────────
+  const VALID_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif']
+  const VALID_EXTS = ['.jpg', '.jpeg', '.png', '.webp', '.avif', '.gif']
+
+  const photoSchema = z.object({
+    file: z
+      .instanceof(File, { error: 'Selecciona una foto.' })
+      .refine((f) => f.size <= 10 * 1024 * 1024, { error: 'La foto no debe superar 10 MB.' })
+      .refine(
+        (f) => {
+          if (f.type && VALID_TYPES.includes(f.type)) return true
+          const ext = '.' + f.name.split('.').pop()?.toLowerCase()
+          return VALID_EXTS.includes(ext)
+        },
+        { error: 'Solo imágenes: JPEG, PNG, WebP, AVIF, GIF.' },
+      ),
+    day: z.string().min(1, { error: 'Elige un día del mes.' }),
+  })
+
+  // ── DOM refs ──────────────────────────────────────────
+  const trigger = document.getElementById('photo-dialog-trigger')
+  const title = document.getElementById('photo-dialog-title')
+  const deleteView = document.getElementById('photo-delete')
+  const deleteDesc = document.getElementById('photo-delete-desc')
+  const formView = document.getElementById('photo-form')
+  const fileInput = document.getElementById('photo-file') as HTMLInputElement | null
+  const dayInput = document.getElementById('photo-day') as HTMLInputElement | null
+  const dayGrid = document.getElementById('photo-day-grid')
+  const submitText = document.getElementById('photo-submit-text')
+  const submitIcon = document.getElementById('photo-submit-icon')
+  const submitSpinner = document.getElementById('photo-submit-spinner')
+  const deleteText = document.getElementById('photo-delete-text')
+  const deleteIcon = document.getElementById('photo-delete-icon')
+  const deleteSpinner = document.getElementById('photo-delete-spinner')
+  const errorEl = document.getElementById('photo-error')
+
+  let currentMonth = 0
+  let currentAction = ''
+
+  // ── Day grid builder ───────────────────────────────────
+  function buildDayGrid(month: number, selectedDay?: number | null) {
+    if (!dayGrid) return
+    const now = new Date()
+    const year = new Date().getFullYear()
+    const daysInMonth = new Date(year, month, 0).getDate()
+    const firstDay = new Date(year, month - 1, 1).getDay()
+    const startOffset = firstDay === 0 ? 6 : firstDay - 1
+    const today = now.getDate()
+    const isCurrentMonth = now.getMonth() + 1 === month
+    const hdrs = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+
+    let h = '<div class="grid grid-cols-7 gap-1 mt-2 text-center">'
+    hdrs.forEach((d) => {
+      h += `<span class="text-[11px] font-medium text-muted-foreground pb-1">${d}</span>`
+    })
+    for (let i = 0; i < startOffset; i++) h += '<span></span>'
+    for (let d = 1; d <= daysInMonth; d++) {
+      const ok = isCurrentMonth ? d <= today : true
+      if (ok) {
+        const selected =
+          d === selectedDay ? ' bg-primary text-primary-foreground' : ' bg-muted text-foreground'
+        h += `<button type="button" class="flex h-8 w-full items-center justify-center rounded-full text-xs font-medium${selected} hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer" data-day="${d}">${d}</button>`
+      } else {
+        h += `<span class="flex h-8 w-full items-center justify-center text-xs text-muted-foreground/15">${d}</span>`
+      }
+    }
+    h += '</div>'
+    dayGrid.innerHTML = h
+
+    const buttons = dayGrid.querySelectorAll('button[data-day]')
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        buttons.forEach((b) => {
+          b.classList.remove('bg-primary', 'text-primary-foreground')
+          b.classList.add('bg-muted', 'text-foreground')
+        })
+        btn.classList.remove('bg-muted', 'text-foreground')
+        btn.classList.add('bg-primary', 'text-primary-foreground')
+        if (dayInput) dayInput.value = btn.getAttribute('data-day') || ''
+      })
+    })
+  }
+  window.addEventListener('photo-action', (e) => {
+    const { action, month, photoDay } = (e as CustomEvent).detail
+    currentMonth = month
+    currentAction = action
+
+    if (title)
+      title.textContent =
+        action === 'delete'
+          ? `Eliminar foto — ${monthNames[month - 1]}`
+          : action === 'edit'
+            ? `Editar foto — ${monthNames[month - 1]}`
+            : `Subir foto — ${monthNames[month - 1]}`
+
+    if (action === 'delete') {
+      deleteView?.classList.remove('hidden')
+      formView?.classList.add('hidden')
+      if (deleteDesc)
+        deleteDesc.textContent = '¿Estás seguro? La foto se eliminará permanentemente.'
+    } else {
+      deleteView?.classList.add('hidden')
+      formView?.classList.remove('hidden')
+      if (fileInput) fileInput.required = action === 'upload'
+      if (submitText) submitText.textContent = action === 'edit' ? 'Guardar' : 'Subir'
+      buildDayGrid(month, photoDay)
+    }
+
+    if (errorEl) {
+      errorEl.classList.add('hidden')
+      errorEl.textContent = ''
+    }
+    // Limpiar estado anterior
+    if (fileInput) fileInput.value = ''
+    if (dayInput) dayInput.value = ''
+    const fileErrEl = document.getElementById('photo-file-error')
+    const dayErrEl = document.getElementById('photo-day-error')
+    if (fileErrEl) {
+      fileErrEl.classList.add('hidden')
+      fileErrEl.textContent = ''
+    }
+    if (dayErrEl) {
+      dayErrEl.classList.add('hidden')
+      dayErrEl.textContent = ''
+    }
+    window.dispatchEvent(new CustomEvent('photo-dialog-reset'))
+    if (trigger) (trigger as HTMLButtonElement).click()
+  })
+
+  // ── Limpiar error al cambiar archivo ──────────────────
+  fileInput?.addEventListener('change', () => {
+    const err = document.getElementById('photo-file-error')
+    if (err) {
+      err.classList.add('hidden')
+      err.textContent = ''
+    }
+  })
+
+  // ── Cancel ─────────────────────────────────────────────
+  const closeDialog = () => trigger && (trigger as HTMLButtonElement).click()
+  document.getElementById('photo-cancel-delete')?.addEventListener('click', closeDialog)
+  document.getElementById('photo-cancel-form')?.addEventListener('click', closeDialog)
+
+  // ── Upload / Edit ─────────────────────────────────────
+  document.getElementById('photo-submit-btn')?.addEventListener('click', async () => {
+    const form = document.getElementById('photo-form') as HTMLFormElement | null
+    if (!form) return
+
+    // Resetear errores visuales
+    const fileErrEl = document.getElementById('photo-file-error')
+    const dayErrEl = document.getElementById('photo-day-error')
+    if (fileErrEl) {
+      fileErrEl.classList.add('hidden')
+      fileErrEl.textContent = ''
+    }
+    if (dayErrEl) {
+      dayErrEl.classList.add('hidden')
+      dayErrEl.textContent = ''
+    }
+    if (errorEl) {
+      errorEl.classList.add('hidden')
+      errorEl.textContent = ''
+    }
+
+    // Zod: validar archivo + día
+    const file = fileInput?.files?.[0] || null
+    const day = dayInput?.value || ''
+    if (currentAction === 'upload') {
+      const r = photoSchema.safeParse({ file, day })
+      if (!r.success) {
+        for (const issue of r.error.issues) {
+          if (issue.path[0] === 'file' && fileErrEl) {
+            fileErrEl.textContent = issue.message
+            fileErrEl.classList.remove('hidden')
+          }
+          if (issue.path[0] === 'day' && dayErrEl) {
+            dayErrEl.textContent = issue.message
+            dayErrEl.classList.remove('hidden')
+          }
+        }
+        return
+      }
+    }
+
+    const btn = document.getElementById('photo-submit-btn')
+    btn?.setAttribute('disabled', '')
+    if (submitIcon) submitIcon.style.display = 'none'
+    if (submitSpinner) submitSpinner.style.display = ''
+    if (submitText) submitText.textContent = currentAction === 'edit' ? 'Guardando…' : 'Subiendo…'
+    if (errorEl) {
+      errorEl.classList.add('hidden')
+      errorEl.textContent = ''
+    }
+
+    const fd = new FormData(form)
+    fd.set('calendarId', calendarId)
+    fd.set('month', String(currentMonth))
+
+    const { data, error } = await actions.uploadPhoto(fd)
+
+    if (data?.success) {
+      window.location.reload()
+      return
+    }
+
+    btn?.removeAttribute('disabled')
+    if (submitIcon) submitIcon.style.display = ''
+    if (submitSpinner) submitSpinner.style.display = 'none'
+    if (submitText) submitText.textContent = currentAction === 'edit' ? 'Guardar' : 'Subir'
+    if (error && errorEl) {
+      errorEl.textContent = error.message
+      errorEl.classList.remove('hidden')
+    }
+  })
+
+  // ── Delete ────────────────────────────────────────────
+  document.getElementById('photo-delete-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('photo-delete-btn')
+    btn?.setAttribute('disabled', '')
+    if (deleteIcon) deleteIcon.style.display = 'none'
+    if (deleteSpinner) deleteSpinner.style.display = ''
+    if (deleteText) deleteText.textContent = 'Eliminando…'
+
+    const fd = new FormData()
+    fd.set('calendarId', calendarId)
+    fd.set('month', String(currentMonth))
+
+    const { data, error } = await actions.deletePhoto(fd)
+
+    if (data?.success) {
+      window.location.reload()
+      return
+    }
+
+    btn?.removeAttribute('disabled')
+    if (deleteIcon) deleteIcon.style.display = ''
+    if (deleteSpinner) deleteSpinner.style.display = 'none'
+    if (deleteText) deleteText.textContent = 'Eliminar'
+    if (error && errorEl) {
+      errorEl.textContent = error.message
+      errorEl.classList.remove('hidden')
+    }
+  })
+</script>

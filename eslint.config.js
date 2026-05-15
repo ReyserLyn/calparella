@@ -4,6 +4,19 @@ import eslintPluginAstro from 'eslint-plugin-astro'
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
+  // ── Global ignores — debe ir primero ──
+  {
+    ignores: [
+      'dist/**',
+      '.astro/**',
+      'node_modules/**',
+      '*.lock',
+      '*.lockb',
+      'worker-configuration.d.ts',
+      '.wrangler/**',
+    ],
+  },
+
   // ── Core JavaScript recommended rules ──
   js.configs.recommended,
 
@@ -18,11 +31,6 @@ export default [
     ...config,
     files: ['**/*.ts', '**/*.tsx', '**/*.mts', '**/*.cts'],
   })),
-
-  // ── Global ignores ──
-  {
-    ignores: ['dist/**', '.astro/**', 'node_modules/**', '*.lock', '*.lockb'],
-  },
 
   // ── Custom rule overrides ──
   {

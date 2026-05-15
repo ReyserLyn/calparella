@@ -33,6 +33,7 @@
     {
       "binding": "CALPARELLA",
       "bucket_name": "calparella",
+      "remote": true,
     },
   ],
 

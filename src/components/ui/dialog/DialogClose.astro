@@ -13,7 +13,7 @@ const { class: className = '', ...rest } = Astro.props as Props
   {...rest}
   data-slot="dialog-close"
   data-dialog-close
-  class={cn('absolute top-4 right-4 inline-flex items-center gap-2', className)}
+  class={cn('absolute top-4 right-4 inline-flex cursor-pointer items-center gap-2', className)}
 >
   <slot />
   {!Astro.slots.has('default') && <span class="sr-only">Close</span>}

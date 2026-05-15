@@ -166,7 +166,7 @@ export const calendarPhotos = sqliteTable(
       .references(() => calendars.id, { onDelete: 'cascade' }),
     month: integer('month').notNull(),
     /** Día elegido por el usuario (1-31) */
-    day: integer('day'),
+    day: integer('day').notNull(),
     imageKey: text('image_key').notNull(),
     imageUrl: text('image_url'),
     caption: text('caption'),

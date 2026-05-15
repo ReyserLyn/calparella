@@ -1,0 +1,233 @@
+---
+import Dialog from '@/components/ui/dialog/Dialog.astro'
+import DialogTrigger from '@/components/ui/dialog/DialogTrigger.astro'
+import DialogContent from '@/components/ui/dialog/DialogContent.astro'
+import DialogTitle from '@/components/ui/dialog/DialogTitle.astro'
+import DialogDescription from '@/components/ui/dialog/DialogDescription.astro'
+import Field from '@/components/ui/field/Field.astro'
+import FieldLabel from '@/components/ui/field/FieldLabel.astro'
+import FieldDescription from '@/components/ui/field/FieldDescription.astro'
+import FieldError from '@/components/ui/field/FieldError.astro'
+import Textarea from '@/components/ui/textarea/Textarea.astro'
+import Button from '@/components/ui/Button.astro'
+import Icon from '@/components/ui/Icon.astro'
+import LoaderPinwheelIcon from '@hugeicons/core-free-icons/LoaderPinwheelIcon'
+import Delete02Icon from '@hugeicons/core-free-icons/Delete02Icon'
+import Camera01Icon from '@hugeicons/core-free-icons/Camera01Icon'
+---
+
+<Dialog>
+  <DialogTrigger id="photo-dialog-trigger" class="hidden" />
+
+  <DialogContent class="sm:max-w-md">
+    <DialogTitle id="photo-dialog-title">Subir foto</DialogTitle>
+
+    <!-- Delete view -->
+    <div id="photo-delete" class="hidden space-y-4">
+      <DialogDescription id="photo-delete-desc" />
+      <div class="flex justify-end gap-3 pt-2">
+        <Button type="button" variant="outline" id="photo-cancel-delete">Cancelar</Button>
+        <Button type="button" variant="destructive" id="photo-delete-btn">
+          <span class="inline-flex items-center gap-2">
+            <span id="photo-delete-icon"><Icon data={Delete02Icon} size={16} /></span>
+            <span id="photo-delete-spinner" style="display:none"
+              ><Icon data={LoaderPinwheelIcon} size={16} class="animate-spin" /></span
+            >
+            <span id="photo-delete-text">Eliminar</span>
+          </span>
+        </Button>
+      </div>
+    </div>
+
+    <!-- Upload/Edit form -->
+    <form id="photo-form" class="space-y-4">
+      <Field>
+        <FieldLabel>Foto</FieldLabel>
+
+        <!-- Área de subida con preview -->
+        <div
+          id="photo-dropzone"
+          class="relative cursor-pointer overflow-hidden rounded-lg border-2 border-dashed border-muted-foreground/25 p-4 text-center transition-colors hover:border-muted-foreground/50"
+        >
+          <input
+            id="photo-file"
+            type="file"
+            name="photo"
+            accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+            required
+            class="sr-only"
+          />
+
+          <!-- Estado: sin archivo -->
+          <div id="photo-empty" class="space-y-2">
+            <div
+              class="mx-auto flex size-10 items-center justify-center rounded-full border border-border"
+            >
+              <Icon data={Camera01Icon} size={18} class="text-muted-foreground" />
+            </div>
+            <p class="text-sm font-medium text-foreground">Elige o arrastra una foto</p>
+            <p class="text-xs text-muted-foreground">JPEG, PNG, WebP, AVIF · Máx 10 MB</p>
+          </div>
+
+          <!-- Estado: archivo seleccionado -->
+          <div id="photo-preview" class="items-center gap-3 overflow-hidden" style="display:none">
+            <div class="shrink-0">
+              <img id="photo-thumb" class="size-14 rounded-lg border object-cover" alt="Preview" />
+            </div>
+            <div class="flex flex-1 flex-col overflow-hidden text-left">
+              <p id="photo-name" class="truncate text-sm font-medium text-foreground"></p>
+              <p id="photo-size" class="text-xs text-muted-foreground"></p>
+            </div>
+            <Button
+              id="photo-remove"
+              type="button"
+              variant="secondary"
+              size="icon-sm"
+              aria-label="Remove file"
+            >
+              <Icon data={Delete02Icon} size={12} />
+            </Button>
+          </div>
+        </div>
+
+        <FieldDescription>Máx 10 MB. JPEG, PNG, WebP, AVIF.</FieldDescription>
+        <FieldError forceMount class="hidden" id="photo-file-error" />
+      </Field>
+
+      <Field>
+        <FieldLabel>Día de la foto</FieldLabel>
+        <!-- Mini grid de días (1-31) generado por JS -->
+        <div id="photo-day-grid" class="mt-1"></div>
+        <input id="photo-day" type="hidden" name="day" value="" />
+        <FieldDescription>Selecciona un día del mes. Solo fechas pasadas.</FieldDescription>
+        <FieldError forceMount class="hidden" id="photo-day-error" />
+      </Field>
+
+      <Field>
+        <FieldLabel for="photo-caption">Descripción</FieldLabel>
+        <Textarea
+          id="photo-caption"
+          name="caption"
+          placeholder="Un recuerdo especial..."
+          maxlength="200"
+          rows={2}
+        />
+      </Field>
+
+      <div
+        id="photo-error"
+        class="hidden rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+      >
+      </div>
+
+      <div class="flex justify-end gap-3 pt-2">
+        <Button type="button" variant="outline" id="photo-cancel-form">Cancelar</Button>
+        <Button type="button" id="photo-submit-btn">
+          <span class="inline-flex items-center gap-2">
+            <span id="photo-submit-icon"><Icon data={Camera01Icon} size={16} /></span>
+            <span id="photo-submit-spinner" style="display:none"
+              ><Icon data={LoaderPinwheelIcon} size={16} class="animate-spin" /></span
+            >
+            <span id="photo-submit-text">Subir</span>
+          </span>
+        </Button>
+      </div>
+    </form>
+  </DialogContent>
+</Dialog>
+
+<script>
+  // ── Referencias ───────────────────────────────────────
+  const dropzone = document.getElementById('photo-dropzone')
+  const fileInput = document.getElementById('photo-file') as HTMLInputElement | null
+  const emptyView = document.getElementById('photo-empty')
+  const previewView = document.getElementById('photo-preview')
+  const thumb = document.getElementById('photo-thumb') as HTMLImageElement | null
+  const nameEl = document.getElementById('photo-name')
+  const sizeEl = document.getElementById('photo-size')
+  const removeBtn = document.getElementById('photo-remove')
+  const fileErrEl = document.getElementById('photo-file-error')
+  let thumbUrl: string | null = null
+
+  // ── Helpers ───────────────────────────────────────────
+  function formatBytes(bytes: number): string {
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  }
+
+  function showPreview(file: File) {
+    if (fileErrEl) {
+      fileErrEl.classList.add('hidden')
+      fileErrEl.textContent = ''
+    }
+    emptyView!.style.display = 'none'
+    previewView!.style.display = 'flex'
+    if (nameEl) nameEl.textContent = file.name
+    if (sizeEl) sizeEl.textContent = formatBytes(file.size)
+    if (thumb) {
+      if (thumbUrl) URL.revokeObjectURL(thumbUrl)
+      thumbUrl = URL.createObjectURL(file)
+      thumb.src = thumbUrl
+      if (!file.type.startsWith('image/')) thumb.style.display = 'none'
+      else thumb.style.display = ''
+    }
+  }
+
+  function resetFile() {
+    emptyView!.style.display = ''
+    previewView!.style.display = 'none'
+    if (fileInput) fileInput.value = ''
+    if (thumb) {
+      thumb.src = ''
+      if (thumbUrl) {
+        URL.revokeObjectURL(thumbUrl)
+        thumbUrl = null
+      }
+    }
+  }
+
+  // ── Click para abrir file dialog ──────────────────────
+  dropzone?.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).closest('#photo-remove')) return
+    fileInput?.click()
+  })
+
+  // ── File selected ─────────────────────────────────────
+  fileInput?.addEventListener('change', () => {
+    const file = fileInput.files?.[0]
+    if (file) showPreview(file)
+    else resetFile()
+  })
+
+  // ── Remove ────────────────────────────────────────────
+  removeBtn?.addEventListener('click', () => {
+    resetFile()
+  })
+
+  // ── Drag & Drop ───────────────────────────────────────
+  dropzone?.addEventListener('dragover', (e) => {
+    e.preventDefault()
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+    dropzone.classList.add('border-primary', 'bg-primary/5')
+  })
+  dropzone?.addEventListener('dragleave', () => {
+    dropzone.classList.remove('border-primary', 'bg-primary/5')
+  })
+  dropzone?.addEventListener('drop', (e) => {
+    e.preventDefault()
+    dropzone.classList.remove('border-primary', 'bg-primary/5')
+    const file = e.dataTransfer?.files?.[0]
+    if (file) {
+      // Replace the file input's files (not fully supported, but for single file)
+      const dt = new DataTransfer()
+      dt.items.add(file)
+      if (fileInput) fileInput.files = dt.files
+      showPreview(file)
+    }
+  })
+  // ── Reset al abrir el dialog ────────────────────────
+  window.addEventListener('photo-dialog-reset', () => {
+    resetFile()
+  })
+</script>
