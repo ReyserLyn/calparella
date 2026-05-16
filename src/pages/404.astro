@@ -1,0 +1,50 @@
+---
+import Layout from '@/layouts/Layout.astro'
+import Logo from '@/components/branding/Logo.astro'
+import Button from '@/components/ui/Button.astro'
+import Icon from '@/components/ui/Icon.astro'
+import AlbumNotFound01Icon from '@hugeicons/core-free-icons/AlbumNotFound01Icon'
+---
+
+<Layout title="Página no encontrada · CalParella" robots="noindex, follow">
+  <div
+    class="flex min-h-svh flex-col items-center justify-center bg-background px-6 py-16 text-center"
+  >
+    <!-- Logo sutil arriba -->
+    <Logo iconSize={28} textSize="text-3xl" class="mb-16" />
+
+    <!-- Icono principal -->
+    <div class="mb-8 inline-flex rounded-full bg-muted p-8">
+      <Icon data={AlbumNotFound01Icon} size={80} class="text-muted-foreground" />
+    </div>
+
+    <!-- Número 404 con la font del logo -->
+    <h1
+      class="font-cherry text-8xl leading-none tracking-tight text-primary select-none md:text-9xl"
+    >
+      404
+    </h1>
+
+    <!-- Mensaje principal -->
+    <p class="mt-6 text-xl font-medium text-foreground md:text-2xl">
+      ¡Uy! Esta página no está en el álbum
+    </p>
+
+    <!-- Descripción -->
+    <p class="mt-3 max-w-md text-sm text-pretty text-muted-foreground">
+      Tal vez la foto se movió, el recuerdo se borró o escribiste mal la dirección. Lo bueno es que
+      los recuerdos que importan siguen en tu calendario.
+    </p>
+
+    <!-- CTA -->
+    <div class="mt-10 flex flex-wrap items-center justify-center gap-4">
+      <Button as="a" href="/" variant="default" size="lg"> Ir al inicio </Button>
+      <Button as="a" href="/calendario" variant="outline" size="lg"> Ver calendario </Button>
+    </div>
+
+    <!-- Detalle decorativo abajo -->
+    <p class="mt-20 text-xs text-muted-foreground/60 select-none">
+      CalParella &mdash; un recuerdo por mes, un álbum para dos
+    </p>
+  </div>
+</Layout>
