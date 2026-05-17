@@ -32,9 +32,10 @@ export function createAuth(env?: Cloudflare.Env, ctx?: ExecutionContext, baseURL
       storeSessionInDatabase: true,
       cookieCache: {
         enabled: true,
-        maxAge: 15 * 60,
+        maxAge: 15 * 60, // 15 min de cache, revalida desde DB al expirar
       },
-      updateAge: 60 * 15,
+      expiresIn: 60 * 60 * 24 * 30, // 30 días
+      updateAge: 60 * 60 * 24, // Renueva sesión en D1 solo una vez por día
     },
 
     emailAndPassword: {
@@ -125,6 +126,9 @@ export function createAuth(env?: Cloudflare.Env, ctx?: ExecutionContext, baseURL
         secure: true,
         sameSite: 'lax',
         httpOnly: true,
+      },
+      ipAddress: {
+        ipAddressHeaders: ['cf-connecting-ip', 'x-real-ip'],
       },
       ...(ctx
         ? {
