@@ -5,6 +5,21 @@ import { z } from 'astro/zod'
  * Se usan tanto en Astro Actions (server) como en validación client-side.
  */
 
+/** Slugs reservados para evitar colisiones con rutas estáticas existentes. */
+const RESERVED_SLUGS = new Set([
+  'registro',
+  'iniciar-sesion',
+  'invitaciones',
+  'invitacion',
+  'calendario',
+  'api',
+  '404',
+  'favicon',
+  'robots',
+  'sitemap',
+  'index',
+])
+
 export const createCalendarSchema = z.object({
   name: z
     .string()
@@ -18,6 +33,9 @@ export const createCalendarSchema = z.object({
     .max(50, { error: 'El slug es demasiado largo.' })
     .regex(/^[a-z0-9-]+$/, {
       error: 'Solo letras minúsculas, números y guiones.',
+    })
+    .refine((val) => !RESERVED_SLUGS.has(val), {
+      error: 'Ese nombre no está disponible. Elige otro.',
     }),
   isPublic: z.coerce.boolean().optional().default(false),
   description: z

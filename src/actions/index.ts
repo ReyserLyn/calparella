@@ -136,7 +136,7 @@ export const server = {
         joinedAt: now,
       })
 
-      return { success: true }
+      return { success: true, slug: finalSlug }
     },
   }),
 

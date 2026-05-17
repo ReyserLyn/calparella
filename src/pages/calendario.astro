@@ -276,7 +276,7 @@ if (memberOf?.slug) {
       submitButton.removeAttribute('disabled')
 
       if (data?.success) {
-        window.location.href = '/calendario'
+        window.location.href = `/${data.slug}`
         return
       }
 
