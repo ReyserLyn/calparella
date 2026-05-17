@@ -274,7 +274,7 @@ const isPending = invitation?.status === 'pending'
     const { data, error } = await actions.acceptInvitation(fd)
 
     if (data?.success) {
-      window.location.href = '/calendario'
+      window.location.href = `/${data.calendarSlug}`
       return
     }
 

@@ -454,7 +454,12 @@ export const server = {
       }
 
       const calendar = await db
-        .select({ id: calendars.id, year: calendars.year, ownerId: calendars.ownerId })
+        .select({
+          id: calendars.id,
+          slug: calendars.slug,
+          year: calendars.year,
+          ownerId: calendars.ownerId,
+        })
         .from(calendars)
         .where(eq(calendars.id, invitation.calendarId))
         .get()
@@ -503,7 +508,7 @@ export const server = {
         .set({ status: 'accepted', inviteeId: user.id, updatedAt: now })
         .where(eq(invitations.id, invitation.id))
 
-      return { success: true, calendarId: invitation.calendarId }
+      return { success: true, calendarId: invitation.calendarId, calendarSlug: calendar.slug }
     },
   }),
 

@@ -134,7 +134,7 @@ const successIconSvg = `<svg viewBox='0 0 24 24' width='14' height='14' fill='no
                 {!hasCalendar && (
                   <DropdownMenuItem class="p-0">
                     <a
-                      href="/calendario/nuevo"
+                      href="/calendario"
                       class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5"
                     >
                       <Icon data={AddTeamIcon} size={14} /> Crear calendario
@@ -192,7 +192,7 @@ const successIconSvg = `<svg viewBox='0 0 24 24' width='14' height='14' fill='no
   copyBtn?.addEventListener('click', async () => {
     const slug = copyBtn.getAttribute('data-slug')
     if (!slug) return
-    const url = `${window.location.origin}/calendario/${slug}`
+    const url = `${window.location.origin}/${slug}`
     try {
       await navigator.clipboard.writeText(url)
       const original = copyBtn.innerHTML
