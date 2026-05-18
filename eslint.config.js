@@ -14,6 +14,7 @@ export default [
       '*.lockb',
       'worker-configuration.d.ts',
       '.wrangler/**',
+      'src/db/migrations/**',
     ],
   },
 

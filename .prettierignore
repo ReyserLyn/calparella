@@ -9,3 +9,6 @@ public/
 # ── Lock files ──
 *.lock
 *.lockb
+
+# db
+src/db/migrations/**
