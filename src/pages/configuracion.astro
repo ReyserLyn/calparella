@@ -1,0 +1,916 @@
+---
+import Layout from '@/layouts/Layout.astro'
+import Header from '@/sections/header.astro'
+import Card from '@/components/ui/card/Card.astro'
+import CardHeader from '@/components/ui/card/CardHeader.astro'
+import CardTitle from '@/components/ui/card/CardTitle.astro'
+import CardDescription from '@/components/ui/card/CardDescription.astro'
+import CardContent from '@/components/ui/card/CardContent.astro'
+import FieldGroup from '@/components/ui/field/FieldGroup.astro'
+import Field from '@/components/ui/field/Field.astro'
+import FieldLabel from '@/components/ui/field/FieldLabel.astro'
+import FieldDescription from '@/components/ui/field/FieldDescription.astro'
+import FieldError from '@/components/ui/field/FieldError.astro'
+import Input from '@/components/ui/Input.astro'
+import Textarea from '@/components/ui/textarea/Textarea.astro'
+import Checkbox from '@/components/ui/checkbox/Checkbox.astro'
+import Button from '@/components/ui/Button.astro'
+import Icon from '@/components/ui/Icon.astro'
+import Avatar from '@/components/ui/avatar/Avatar.astro'
+import AvatarFallback from '@/components/ui/avatar/AvatarFallback.astro'
+import Dialog from '@/components/ui/dialog/Dialog.astro'
+import DialogContent from '@/components/ui/dialog/DialogContent.astro'
+import DialogHeader from '@/components/ui/dialog/DialogHeader.astro'
+import DialogTitle from '@/components/ui/dialog/DialogTitle.astro'
+import DialogDescription from '@/components/ui/dialog/DialogDescription.astro'
+import DialogFooter from '@/components/ui/dialog/DialogFooter.astro'
+import { env } from 'cloudflare:workers'
+import { eq } from 'drizzle-orm'
+import { calendars, calendarMembers, users } from '@/db/schema'
+import { createClient } from '@/db'
+import Settings01Icon from '@hugeicons/core-free-icons/Settings01Icon'
+import UserIcon from '@hugeicons/core-free-icons/UserIcon'
+import Cancel01Icon from '@hugeicons/core-free-icons/Cancel01Icon'
+import Logout01Icon from '@hugeicons/core-free-icons/Logout01Icon'
+import ArrowRight01Icon from '@hugeicons/core-free-icons/ArrowRight01Icon'
+import Delete02Icon from '@hugeicons/core-free-icons/Delete02Icon'
+import InformationCircleIcon from '@hugeicons/core-free-icons/InformationCircleIcon'
+import LoaderPinwheelIcon from '@hugeicons/core-free-icons/LoaderPinwheelIcon'
+import Calendar02Icon from '@hugeicons/core-free-icons/Calendar02Icon'
+
+if (!Astro.locals.user) {
+  return Astro.redirect('/iniciar-sesion')
+}
+
+const user = Astro.locals.user
+const db = createClient(env.DB)
+
+// Buscar calendario donde el usuario es miembro
+const membership = await db
+  .select({
+    calendarId: calendarMembers.calendarId,
+    role: calendarMembers.role,
+  })
+  .from(calendarMembers)
+  .where(eq(calendarMembers.userId, user.id))
+  .get()
+
+if (!membership) {
+  return Astro.redirect('/calendario')
+}
+
+// Cargar calendario
+const calendar = await db
+  .select({
+    id: calendars.id,
+    name: calendars.name,
+    slug: calendars.slug,
+    year: calendars.year,
+    isPublic: calendars.isPublic,
+    description: calendars.description,
+    ownerId: calendars.ownerId,
+  })
+  .from(calendars)
+  .where(eq(calendars.id, membership.calendarId))
+  .get()
+
+if (!calendar) {
+  return Astro.redirect('/calendario')
+}
+
+// Cargar miembros con info de usuario
+const members = await db
+  .select({
+    userId: calendarMembers.userId,
+    role: calendarMembers.role,
+    joinedAt: calendarMembers.joinedAt,
+    name: users.name,
+    email: users.email,
+  })
+  .from(calendarMembers)
+  .innerJoin(users, eq(calendarMembers.userId, users.id))
+  .where(eq(calendarMembers.calendarId, calendar.id))
+  .all()
+
+const isOwner = calendar.ownerId === user.id
+const partner = members.find((m) => m.userId !== user.id)
+---
+
+<Layout title="Configuracion - CalParella">
+  <Header />
+  <main class="mx-auto w-full max-w-3xl px-4 pt-28 pb-12">
+    {/* ── Header de la pagina ───────────────────────────────── */}
+    <div class="mb-8 flex items-center gap-3">
+      <div class="flex size-10 items-center justify-center rounded-full bg-primary/10">
+        <Icon data={Settings01Icon} size={20} class="text-primary" />
+      </div>
+      <div>
+        <h1 class="text-2xl font-semibold tracking-tight">Configuracion</h1>
+        <p class="text-sm text-muted-foreground">Gestiona tu calendario y pareja</p>
+      </div>
+    </div>
+
+    <div class="space-y-8">
+      {/* ── SECCION 1: Informacion del calendario ───────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle class="flex items-center gap-2 text-base">
+            <Icon data={Calendar02Icon} size={20} class="text-primary" />
+            Informacion del calendario
+          </CardTitle>
+          <CardDescription>Edita el nombre, enlace, descripcion y visibilidad.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form id="settings-form" method="POST" novalidate>
+            <FieldGroup class="gap-5">
+              <input type="hidden" name="calendarId" value={calendar.id} />
+
+              {/* Nombre */}
+              <Field id="field-name">
+                <FieldLabel for="name">Nombre del calendario</FieldLabel>
+                <div class="relative">
+                  <Icon
+                    data={Calendar02Icon}
+                    size={16}
+                    class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
+                  />
+                  <Input
+                    id="name"
+                    name="name"
+                    type="text"
+                    value={calendar.name}
+                    required
+                    autocomplete="off"
+                    class="pl-9"
+                  />
+                </div>
+                <FieldError forceMount class="hidden" />
+              </Field>
+
+              {/* Slug */}
+              <Field id="field-slug">
+                <FieldLabel for="slug">Enlace personalizado</FieldLabel>
+                <div class="relative">
+                  <span
+                    class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-xs text-muted-foreground"
+                  >
+                    calparella.site/
+                  </span>
+                  <Input
+                    id="slug"
+                    name="slug"
+                    type="text"
+                    value={calendar.slug}
+                    required
+                    autocomplete="off"
+                    class="pl-30"
+                  />
+                </div>
+                <FieldDescription>Solo letras minusculas, numeros y guiones.</FieldDescription>
+                <FieldError forceMount class="hidden" />
+              </Field>
+
+              {/* Checkbox: recalcular slug */}
+              <div class="-mt-2 flex items-start gap-3">
+                <Checkbox id="updateSlugFromName" name="updateSlugFromName" value="true" checked />
+                <div class="grid gap-1">
+                  <FieldLabel for="updateSlugFromName" class="text-sm leading-none font-medium">
+                    Actualizar slug desde el nombre
+                  </FieldLabel>
+                  <FieldDescription>
+                    Al guardar, el slug se recalculara automaticamente desde el nombre.
+                  </FieldDescription>
+                </div>
+              </div>
+
+              {/* Descripcion */}
+              <Field id="field-description">
+                <FieldLabel for="description">Descripcion</FieldLabel>
+                <Textarea
+                  id="description"
+                  name="description"
+                  rows="3"
+                  value={calendar.description || ''}
+                  placeholder="Los momentos que construyen su historia, mes a mes."
+                  autocomplete="off"
+                  class="resize-none"
+                />
+                <FieldDescription
+                  >Aparece bajo el nombre del calendario (max. 200 caracteres).</FieldDescription
+                >
+                <FieldError forceMount class="hidden" />
+              </Field>
+
+              {/* Publico/privado */}
+              <div class="flex items-start gap-3">
+                <Checkbox id="isPublic" name="isPublic" value="true" checked={calendar.isPublic} />
+                <div class="grid gap-1">
+                  <FieldLabel for="isPublic" class="text-sm leading-none font-medium">
+                    Calendario publico
+                  </FieldLabel>
+                  <FieldDescription>
+                    Cualquiera con el enlace puede verlo. Desactivado = solo ustedes pueden acceder.
+                  </FieldDescription>
+                </div>
+              </div>
+
+              <div
+                id="settings-error"
+                class="hidden rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+              >
+              </div>
+              <div
+                id="settings-success"
+                class="hidden rounded-lg bg-primary/10 p-3 text-sm text-primary"
+              >
+              </div>
+
+              <Button type="submit" id="settings-submit" class="w-full" size="lg">
+                <span class="inline-flex items-center gap-2">
+                  <span id="settings-icon">
+                    <Icon data={Settings01Icon} size={16} />
+                  </span>
+                  <span id="settings-spinner" style="display:none">
+                    <Icon data={LoaderPinwheelIcon} size={16} class="animate-spin" />
+                  </span>
+                  <span id="settings-text">Guardar cambios</span>
+                </span>
+              </Button>
+            </FieldGroup>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* ── SECCION 2: Pareja ───────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle class="flex items-center gap-2 text-base">
+            <Icon data={UserIcon} size={20} class="text-primary" />
+            Pareja
+          </CardTitle>
+          <CardDescription>
+            {
+              partner
+                ? `Tu pareja en "${calendar.name}".`
+                : 'Aun no tienes pareja en este calendario. Invitala desde /invitaciones.'
+            }
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {
+            partner ? (
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-center gap-3">
+                  <Avatar size="lg">
+                    <AvatarFallback>{partner.name.charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p class="text-sm font-medium">{partner.name}</p>
+                    <p class="text-xs text-muted-foreground">{partner.email}</p>
+                    <p class="text-xs text-muted-foreground">
+                      Unido el {new Date(partner.joinedAt).toLocaleDateString('es-ES')}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                  {isOwner && (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        class="transfer-btn"
+                        data-partner-id={partner.userId}
+                        data-partner-name={partner.name}
+                      >
+                        <span class="inline-flex items-center gap-2">
+                          <Icon data={ArrowRight01Icon} size={14} />
+                          Transferir ownership
+                        </span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        class="remove-btn"
+                        data-partner-id={partner.userId}
+                        data-partner-name={partner.name}
+                      >
+                        <span class="inline-flex items-center gap-2">
+                          <Icon data={Cancel01Icon} size={14} />
+                          Eliminar pareja
+                        </span>
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div class="flex items-center gap-3 rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+                <Icon data={InformationCircleIcon} size={18} />
+                <p>
+                  No tienes pareja todavia.{' '}
+                  <a href="/invitaciones" class="text-primary underline underline-offset-2">
+                    Invita a alguien
+                  </a>
+                </p>
+              </div>
+            )
+          }
+        </CardContent>
+      </Card>
+
+      {/* ── SECCION 3: Zona de peligro ──────────────────────── */}
+      <Card class="border-destructive/30">
+        <CardHeader>
+          <CardTitle class="flex items-center gap-2 text-base text-destructive">
+            <Icon data={Delete02Icon} size={20} />
+            Zona de peligro
+          </CardTitle>
+          <CardDescription>Acciones destructivas que no se pueden deshacer.</CardDescription>
+        </CardHeader>
+        <CardContent class="space-y-4">
+          {
+            isOwner && (
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p class="text-sm font-medium">Eliminar calendario</p>
+                  <p class="text-xs text-muted-foreground">
+                    Borra todo: fotos, miembros e invitaciones. No hay vuelta atras.
+                  </p>
+                </div>
+                <Button type="button" variant="destructive" size="sm" id="delete-calendar-btn">
+                  <span class="inline-flex items-center gap-2">
+                    <Icon data={Delete02Icon} size={14} />
+                    Eliminar calendario
+                  </span>
+                </Button>
+              </div>
+            )
+          }
+
+          {
+            !isOwner && (
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p class="text-sm font-medium">Abandonar calendario</p>
+                  <p class="text-xs text-muted-foreground">
+                    Dejaras de ser miembro. Podras crear o unirte a otro calendario.
+                  </p>
+                </div>
+                <Button type="button" variant="destructive" size="sm" id="leave-calendar-btn">
+                  <span class="inline-flex items-center gap-2">
+                    <Icon data={Logout01Icon} size={14} />
+                    Abandonar calendario
+                  </span>
+                </Button>
+              </div>
+            )
+          }
+        </CardContent>
+      </Card>
+    </div>
+  </main>
+
+  {/* ── DIALOGS de confirmacion ───────────────────────────── */}
+
+  {/* Dialog: Eliminar pareja */}
+  <Dialog id="dialog-remove">
+    <DialogContent class="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle class="flex items-center gap-2 text-destructive">
+          <Icon data={Cancel01Icon} size={18} />
+          Eliminar pareja
+        </DialogTitle>
+        <DialogDescription>
+          ¿Estás seguro? <span id="remove-partner-name"></span> perderá acceso al calendario inmediatamente.
+          Las fotos permaneceran. Si el calendario es publico, aun podra verlo.
+        </DialogDescription>
+      </DialogHeader>
+      <div
+        id="dialog-remove-error"
+        class="hidden rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+      >
+      </div>
+      <DialogFooter class="gap-2">
+        <Button data-slot="dialog-close" variant="outline" size="sm"> Cancelar </Button>
+        <Button variant="destructive" size="sm" id="confirm-remove-btn">
+          <span class="inline-flex items-center gap-2">
+            <span id="confirm-remove-icon">
+              <Icon data={Cancel01Icon} size={14} />
+            </span>
+            <span id="confirm-remove-spinner" style="display:none">
+              <Icon data={LoaderPinwheelIcon} size={14} class="animate-spin" />
+            </span>
+            <span id="confirm-remove-text">Eliminar pareja</span>
+          </span>
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+
+  {/* Dialog: Transferir ownership */}
+  <Dialog id="dialog-transfer">
+    <DialogContent class="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle class="flex items-center gap-2">
+          <Icon data={ArrowRight01Icon} size={18} />
+          Transferir ownership
+        </DialogTitle>
+        <DialogDescription>
+          ¿Estás seguro? <span id="transfer-partner-name"></span> se convertirá en el dueño del calendario.
+          Tú pasarás a ser miembro. Esta acción no se puede deshacer.
+        </DialogDescription>
+      </DialogHeader>
+      <div
+        id="dialog-transfer-error"
+        class="hidden rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+      >
+      </div>
+      <DialogFooter class="gap-2">
+        <Button data-slot="dialog-close" variant="outline" size="sm"> Cancelar </Button>
+        <Button size="sm" id="confirm-transfer-btn">
+          <span class="inline-flex items-center gap-2">
+            <span id="confirm-transfer-icon">
+              <Icon data={ArrowRight01Icon} size={14} />
+            </span>
+            <span id="confirm-transfer-spinner" style="display:none">
+              <Icon data={LoaderPinwheelIcon} size={14} class="animate-spin" />
+            </span>
+            <span id="confirm-transfer-text">Transferir</span>
+          </span>
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+
+  {/* Dialog: Eliminar calendario */}
+  <Dialog id="dialog-delete">
+    <DialogContent class="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle class="flex items-center gap-2 text-destructive">
+          <Icon data={Delete02Icon} size={18} />
+          Eliminar calendario
+        </DialogTitle>
+        <DialogDescription>
+          ¿Estás seguro? Se borrarán todas las fotos, miembros e invitaciones de <strong
+            >"{calendar.name}"</strong
+          >. Esta acción es permanente y no se puede deshacer.
+        </DialogDescription>
+      </DialogHeader>
+      <div
+        id="dialog-delete-error"
+        class="hidden rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+      >
+      </div>
+      <DialogFooter class="gap-2">
+        <Button data-slot="dialog-close" variant="outline" size="sm"> Cancelar </Button>
+        <Button variant="destructive" size="sm" id="confirm-delete-btn">
+          <span class="inline-flex items-center gap-2">
+            <span id="confirm-delete-icon">
+              <Icon data={Delete02Icon} size={14} />
+            </span>
+            <span id="confirm-delete-spinner" style="display:none">
+              <Icon data={LoaderPinwheelIcon} size={14} class="animate-spin" />
+            </span>
+            <span id="confirm-delete-text">Eliminar para siempre</span>
+          </span>
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+
+  {/* Dialog: Abandonar calendario */}
+  <Dialog id="dialog-leave">
+    <DialogContent class="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle class="flex items-center gap-2 text-destructive">
+          <Icon data={Logout01Icon} size={18} />
+          Abandonar calendario
+        </DialogTitle>
+        <DialogDescription>
+          ¿Estás seguro? Dejarás de ser miembro de <strong>"{calendar.name}"</strong>. Podrás crear
+          tu propio calendario o unirte a otro.
+        </DialogDescription>
+      </DialogHeader>
+      <div
+        id="dialog-leave-error"
+        class="hidden rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+      >
+      </div>
+      <DialogFooter class="gap-2">
+        <Button data-slot="dialog-close" variant="outline" size="sm"> Cancelar </Button>
+        <Button variant="destructive" size="sm" id="confirm-leave-btn">
+          <span class="inline-flex items-center gap-2">
+            <span id="confirm-leave-icon">
+              <Icon data={Logout01Icon} size={14} />
+            </span>
+            <span id="confirm-leave-spinner" style="display:none">
+              <Icon data={LoaderPinwheelIcon} size={14} class="animate-spin" />
+            </span>
+            <span id="confirm-leave-text">Abandonar</span>
+          </span>
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+</Layout>
+
+<script>
+  import slugify from 'slugify'
+  import { actions } from 'astro:actions'
+  import { updateCalendarSchema } from '@/lib/calendar-schemas'
+
+  const schema = updateCalendarSchema
+
+  // ── DOM refs: form settings ─────────────────────────────
+  const form = document.getElementById('settings-form') as HTMLFormElement | null
+  const nameInput = document.getElementById('name') as HTMLInputElement | null
+  const slugInput = document.getElementById('slug') as HTMLInputElement | null
+  const descriptionTextarea = document.getElementById('description') as HTMLTextAreaElement | null
+  const updateSlugCheckbox = document.getElementById(
+    'updateSlugFromName',
+  ) as HTMLInputElement | null
+  const fieldName = document.getElementById('field-name')
+  const fieldSlug = document.getElementById('field-slug')
+  const fieldDescription = document.getElementById('field-description')
+  const submitButton = document.getElementById('settings-submit')
+  const submitIcon = document.getElementById('settings-icon')
+  const spinner = document.getElementById('settings-spinner')
+  const submitText = document.getElementById('settings-text')
+  const errorContainer = document.getElementById('settings-error')
+  const successContainer = document.getElementById('settings-success')
+
+  type FieldId = 'name' | 'slug' | 'description'
+  const fieldMap: Record<
+    FieldId,
+    { input: HTMLInputElement | HTMLTextAreaElement | null; field: HTMLElement | null }
+  > = {
+    name: { input: nameInput, field: fieldName },
+    slug: { input: slugInput, field: fieldSlug },
+    description: { input: descriptionTextarea, field: fieldDescription },
+  }
+
+  // ── Helpers ─────────────────────────────────────────────
+  function getFieldError(field: HTMLElement): HTMLElement | null {
+    return field.querySelector('[data-slot="field-error"]')
+  }
+
+  function setFieldError(fieldId: FieldId, message: string | null) {
+    const entry = fieldMap[fieldId]
+    if (!entry?.field || !entry.input) return
+    const errorEl = getFieldError(entry.field)
+    if (!errorEl) return
+    if (message) {
+      entry.input.setAttribute('aria-invalid', 'true')
+      entry.field.dataset.invalid = 'true'
+      errorEl.textContent = message
+      errorEl.classList.remove('hidden')
+    } else {
+      entry.input.removeAttribute('aria-invalid')
+      delete entry.field.dataset.invalid
+      errorEl.textContent = ''
+      errorEl.classList.add('hidden')
+    }
+  }
+
+  function validateField(fieldId: FieldId): string | null {
+    const value = fieldMap[fieldId].input?.value?.trim() ?? ''
+    const result = schema.shape[fieldId].safeParse(value)
+    if (!result.success) {
+      const msg = result.error.issues[0]?.message || 'Valor invalido'
+      setFieldError(fieldId, msg)
+      return msg
+    }
+    setFieldError(fieldId, null)
+    return null
+  }
+
+  function validateAll(): boolean {
+    return (['name', 'slug', 'description'] as FieldId[])
+      .map(validateField)
+      .every((e) => e === null)
+  }
+
+  function resetErrors() {
+    ;(['name', 'slug', 'description'] as FieldId[]).forEach((id) => setFieldError(id, null))
+  }
+
+  // ── Slug auto-generado desde nombre ─────────────────────
+  if (nameInput && slugInput && updateSlugCheckbox) {
+    let userEditedSlug = false
+
+    slugInput.addEventListener('focus', () => {
+      userEditedSlug = true
+    })
+
+    nameInput.addEventListener('input', () => {
+      if (updateSlugCheckbox.checked && !userEditedSlug) {
+        slugInput.value = slugify(nameInput.value, { lower: true, strict: true })
+      }
+    })
+
+    updateSlugCheckbox.addEventListener('change', () => {
+      if (updateSlugCheckbox.checked) {
+        userEditedSlug = false
+        slugInput.value = slugify(nameInput.value, { lower: true, strict: true })
+      }
+    })
+
+    slugInput.addEventListener('input', () => {
+      userEditedSlug = true
+      updateSlugCheckbox.checked = false
+    })
+  }
+
+  // ── Submit: actualizar calendario ───────────────────────
+  if (
+    form &&
+    submitButton &&
+    submitIcon &&
+    spinner &&
+    submitText &&
+    errorContainer &&
+    successContainer
+  ) {
+    ;(['name', 'slug', 'description'] as FieldId[]).forEach((id) => {
+      const el = fieldMap[id].input
+      el?.addEventListener('input', () => {
+        const field = fieldMap[id].field
+        if (field && 'invalid' in field.dataset) validateField(id)
+      })
+    })
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      errorContainer.classList.add('hidden')
+      errorContainer.textContent = ''
+      successContainer.classList.add('hidden')
+      successContainer.textContent = ''
+      resetErrors()
+
+      if (!validateAll()) return
+
+      submitButton.setAttribute('disabled', '')
+      submitIcon.style.display = 'none'
+      spinner.style.display = ''
+      submitText.textContent = 'Guardando...'
+
+      const formData = new FormData(form)
+      const { data, error } = await actions.updateCalendar(formData)
+
+      submitIcon.style.display = ''
+      spinner.style.display = 'none'
+      submitText.textContent = 'Guardar cambios'
+      submitButton.removeAttribute('disabled')
+
+      if (data?.success) {
+        successContainer.textContent = 'Cambios guardados correctamente.'
+        successContainer.classList.remove('hidden')
+        if (data.newSlug) {
+          // Redirigir al nuevo slug despues de un momento
+          setTimeout(() => {
+            window.location.href = `/${data.newSlug}`
+          }, 800)
+        } else {
+          setTimeout(() => window.location.reload(), 1200)
+        }
+        return
+      }
+
+      if (error) {
+        errorContainer.textContent = error.message
+        errorContainer.classList.remove('hidden')
+        form.scrollIntoView({ behavior: 'smooth' })
+      }
+    })
+  }
+
+  // ── Helpers para dialogs ────────────────────────────────
+  function openDialog(id: string) {
+    const dialog = document.getElementById(id)
+    if (dialog) {
+      dialog.dispatchEvent(new CustomEvent('dialog:set', { detail: { open: true } }))
+    }
+  }
+
+  function setDialogError(errorId: string, message: string) {
+    const el = document.getElementById(errorId)
+    if (el) {
+      el.textContent = message
+      el.classList.remove('hidden')
+    }
+  }
+
+  function clearDialogError(errorId: string) {
+    const el = document.getElementById(errorId)
+    if (el) {
+      el.textContent = ''
+      el.classList.add('hidden')
+    }
+  }
+
+  function setLoading(
+    btnId: string,
+    iconId: string,
+    spinnerId: string,
+    textId: string,
+    loadingText: string,
+    isLoading: boolean,
+  ) {
+    const btn = document.getElementById(btnId)
+    const icon = document.getElementById(iconId)
+    const spin = document.getElementById(spinnerId)
+    const text = document.getElementById(textId)
+
+    if (isLoading) {
+      btn?.setAttribute('disabled', '')
+      if (icon) icon.style.display = 'none'
+      if (spin) spin.style.display = ''
+      if (text) text.textContent = loadingText
+    } else {
+      btn?.removeAttribute('disabled')
+      if (icon) icon.style.display = ''
+      if (spin) spin.style.display = 'none'
+      if (text) text.textContent = loadingText
+    }
+  }
+
+  // ── Acciones destructivas: estado ───────────────────────
+  let pendingAction: { type: string; partnerId?: string; partnerName?: string } | null = null
+  const calendarId =
+    (document.querySelector('[name="calendarId"]') as HTMLInputElement)?.value || ''
+
+  // Eliminar pareja
+  document.querySelectorAll('.remove-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const partnerId = btn.getAttribute('data-partner-id') || ''
+      const partnerName = btn.getAttribute('data-partner-name') || ''
+      pendingAction = { type: 'remove', partnerId, partnerName }
+      document.getElementById('remove-partner-name')!.textContent = partnerName
+      clearDialogError('dialog-remove-error')
+      openDialog('dialog-remove')
+    })
+  })
+
+  document.getElementById('confirm-remove-btn')?.addEventListener('click', async () => {
+    if (!pendingAction || pendingAction.type !== 'remove') return
+    clearDialogError('dialog-remove-error')
+    setLoading(
+      'confirm-remove-btn',
+      'confirm-remove-icon',
+      'confirm-remove-spinner',
+      'confirm-remove-text',
+      'Eliminando...',
+      true,
+    )
+
+    const fd = new FormData()
+    fd.set('calendarId', calendarId)
+    fd.set('memberUserId', pendingAction.partnerId!)
+
+    const { data, error } = await actions.removeMember(fd)
+
+    if (data?.success) {
+      window.location.reload()
+      return
+    }
+
+    setLoading(
+      'confirm-remove-btn',
+      'confirm-remove-icon',
+      'confirm-remove-spinner',
+      'confirm-remove-text',
+      'Eliminar pareja',
+      false,
+    )
+    if (error) setDialogError('dialog-remove-error', error.message)
+  })
+
+  // Transferir ownership
+  document.querySelectorAll('.transfer-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const partnerId = btn.getAttribute('data-partner-id') || ''
+      const partnerName = btn.getAttribute('data-partner-name') || ''
+      pendingAction = { type: 'transfer', partnerId, partnerName }
+      document.getElementById('transfer-partner-name')!.textContent = partnerName
+      clearDialogError('dialog-transfer-error')
+      openDialog('dialog-transfer')
+    })
+  })
+
+  document.getElementById('confirm-transfer-btn')?.addEventListener('click', async () => {
+    if (!pendingAction || pendingAction.type !== 'transfer') return
+    clearDialogError('dialog-transfer-error')
+    setLoading(
+      'confirm-transfer-btn',
+      'confirm-transfer-icon',
+      'confirm-transfer-spinner',
+      'confirm-transfer-text',
+      'Transfiriendo...',
+      true,
+    )
+
+    const fd = new FormData()
+    fd.set('calendarId', calendarId)
+    fd.set('newOwnerId', pendingAction.partnerId!)
+
+    const { data, error } = await actions.transferOwnership(fd)
+
+    if (data?.success) {
+      window.location.reload()
+      return
+    }
+
+    setLoading(
+      'confirm-transfer-btn',
+      'confirm-transfer-icon',
+      'confirm-transfer-spinner',
+      'confirm-transfer-text',
+      'Transferir',
+      false,
+    )
+    if (error) setDialogError('dialog-transfer-error', error.message)
+  })
+
+  // Eliminar calendario
+  document.getElementById('delete-calendar-btn')?.addEventListener('click', () => {
+    pendingAction = { type: 'delete' }
+    clearDialogError('dialog-delete-error')
+    openDialog('dialog-delete')
+  })
+
+  document.getElementById('confirm-delete-btn')?.addEventListener('click', async () => {
+    if (!pendingAction || pendingAction.type !== 'delete') return
+    clearDialogError('dialog-delete-error')
+    setLoading(
+      'confirm-delete-btn',
+      'confirm-delete-icon',
+      'confirm-delete-spinner',
+      'confirm-delete-text',
+      'Eliminando...',
+      true,
+    )
+
+    const fd = new FormData()
+    fd.set('calendarId', calendarId)
+
+    const { data, error } = await actions.deleteCalendar(fd)
+
+    if (data?.success) {
+      window.location.href = '/'
+      return
+    }
+
+    setLoading(
+      'confirm-delete-btn',
+      'confirm-delete-icon',
+      'confirm-delete-spinner',
+      'confirm-delete-text',
+      'Eliminar para siempre',
+      false,
+    )
+    if (error) setDialogError('dialog-delete-error', error.message)
+  })
+
+  // Abandonar calendario
+  document.getElementById('leave-calendar-btn')?.addEventListener('click', () => {
+    pendingAction = { type: 'leave' }
+    clearDialogError('dialog-leave-error')
+    openDialog('dialog-leave')
+  })
+
+  document.getElementById('confirm-leave-btn')?.addEventListener('click', async () => {
+    if (!pendingAction || pendingAction.type !== 'leave') return
+    clearDialogError('dialog-leave-error')
+    setLoading(
+      'confirm-leave-btn',
+      'confirm-leave-icon',
+      'confirm-leave-spinner',
+      'confirm-leave-text',
+      'Saliendo...',
+      true,
+    )
+
+    const fd = new FormData()
+    fd.set('calendarId', calendarId)
+
+    const { data, error } = await actions.leaveCalendar(fd)
+
+    if (data?.success) {
+      window.location.href = '/calendario'
+      return
+    }
+
+    setLoading(
+      'confirm-leave-btn',
+      'confirm-leave-icon',
+      'confirm-leave-spinner',
+      'confirm-leave-text',
+      'Abandonar',
+      false,
+    )
+    if (error) setDialogError('dialog-leave-error', error.message)
+  })
+</script>

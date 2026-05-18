@@ -4,7 +4,8 @@ import { eq, and, gt } from 'drizzle-orm'
 import { env } from 'cloudflare:workers'
 import { calendars, calendarMembers, calendarPhotos, invitations, users } from '@/db/schema'
 import { createClient } from '@/db'
-import { createCalendarSchema } from '@/lib/calendar-schemas'
+import { createCalendarSchema, updateCalendarSchema } from '@/lib/calendar-schemas'
+import slugify from 'slugify'
 
 // ── Helpers ───────────────────────────────────────────────
 
@@ -35,6 +36,23 @@ async function requireCalendarMember(userId: string, calendarId: string) {
     })
   }
   return member
+}
+
+async function requireCalendarOwner(userId: string, calendarId: string) {
+  const db = createClient(env.DB)
+  const calendar = await db
+    .select({ ownerId: calendars.ownerId })
+    .from(calendars)
+    .where(eq(calendars.id, calendarId))
+    .get()
+
+  if (!calendar || calendar.ownerId !== userId) {
+    throw new ActionError({
+      code: 'FORBIDDEN',
+      message: 'Solo el dueño puede realizar esta acción.',
+    })
+  }
+  return calendar
 }
 
 // ── Schemas ────────────────────────────────────────────────
@@ -650,6 +668,257 @@ export const server = {
         .update(invitations)
         .set({ hidden: true, updatedAt: new Date() })
         .where(eq(invitations.id, input.invitationId))
+
+      return { success: true }
+    },
+  }),
+
+  // ── Calendar Settings ───────────────────────────────────────
+
+  /** Actualizar información del calendario */
+  updateCalendar: defineAction({
+    accept: 'form',
+    input: updateCalendarSchema,
+    handler: async (input, context) => {
+      const user = context.locals.user
+      if (!user) throw new ActionError({ code: 'UNAUTHORIZED', message: 'Inicia sesión.' })
+
+      await requireCalendarMember(user.id, input.calendarId)
+
+      const db = createClient(env.DB)
+      const now = new Date()
+
+      const calendar = await db
+        .select({ id: calendars.id, slug: calendars.slug, name: calendars.name })
+        .from(calendars)
+        .where(eq(calendars.id, input.calendarId))
+        .get()
+
+      if (!calendar) {
+        throw new ActionError({ code: 'NOT_FOUND', message: 'Calendario no encontrado.' })
+      }
+
+      let finalSlug = input.slug
+
+      // Si updateSlugFromName está activo, recalcular slug desde el nombre
+      if (input.updateSlugFromName) {
+        finalSlug = slugify(input.name, { lower: true, strict: true })
+      }
+
+      // Validar que el nuevo slug no esté en uso por OTRO calendario
+      if (finalSlug !== calendar.slug) {
+        const existing = await db
+          .select({ id: calendars.id })
+          .from(calendars)
+          .where(eq(calendars.slug, finalSlug))
+          .get()
+
+        if (existing) {
+          throw new ActionError({
+            code: 'CONFLICT',
+            message: 'Ese slug ya está en uso. Elige otro.',
+          })
+        }
+      }
+
+      try {
+        await db
+          .update(calendars)
+          .set({
+            name: input.name,
+            slug: finalSlug,
+            description: input.description || null,
+            isPublic: input.isPublic,
+            updatedAt: now,
+          })
+          .where(eq(calendars.id, input.calendarId))
+      } catch {
+        throw new ActionError({
+          code: 'CONFLICT',
+          message: 'Ese slug ya está en uso. Elige otro.',
+        })
+      }
+
+      return { success: true, newSlug: finalSlug !== calendar.slug ? finalSlug : undefined }
+    },
+  }),
+
+  /** Eliminar calendario completamente (con limpieza de R2) */
+  deleteCalendar: defineAction({
+    accept: 'form',
+    input: z.object({
+      calendarId: z.string(),
+    }),
+    handler: async (input, context) => {
+      const user = context.locals.user
+      if (!user) throw new ActionError({ code: 'UNAUTHORIZED', message: 'Inicia sesión.' })
+
+      await requireCalendarOwner(user.id, input.calendarId)
+
+      const db = createClient(env.DB)
+
+      // 1. Obtener todas las fotos para borrar de R2
+      const photos = await db
+        .select({ imageKey: calendarPhotos.imageKey })
+        .from(calendarPhotos)
+        .where(eq(calendarPhotos.calendarId, input.calendarId))
+        .all()
+
+      // 2. Borrar fotos de R2
+      for (const photo of photos) {
+        try {
+          await env.CALPARELLA.delete(photo.imageKey)
+        } catch {
+          // Si falla, continuamos — no bloqueamos la eliminación
+        }
+      }
+
+      // 3. Borrar calendario de D1 (cascada: members, photos, invitations)
+      await db.delete(calendars).where(eq(calendars.id, input.calendarId))
+
+      return { success: true }
+    },
+  }),
+
+  /** Eliminar pareja del calendario (solo owner) */
+  removeMember: defineAction({
+    accept: 'form',
+    input: z.object({
+      calendarId: z.string(),
+      memberUserId: z.string(),
+    }),
+    handler: async (input, context) => {
+      const user = context.locals.user
+      if (!user) throw new ActionError({ code: 'UNAUTHORIZED', message: 'Inicia sesión.' })
+
+      await requireCalendarOwner(user.id, input.calendarId)
+
+      if (input.memberUserId === user.id) {
+        throw new ActionError({
+          code: 'BAD_REQUEST',
+          message: 'No puedes eliminarte a ti mismo. Para salir, elimina el calendario.',
+        })
+      }
+
+      const db = createClient(env.DB)
+
+      const member = await db
+        .select({ id: calendarMembers.id })
+        .from(calendarMembers)
+        .where(
+          and(
+            eq(calendarMembers.calendarId, input.calendarId),
+            eq(calendarMembers.userId, input.memberUserId),
+          ),
+        )
+        .get()
+
+      if (!member) {
+        throw new ActionError({
+          code: 'NOT_FOUND',
+          message: 'Este usuario no es miembro del calendario.',
+        })
+      }
+
+      await db.delete(calendarMembers).where(eq(calendarMembers.id, member.id))
+
+      return { success: true }
+    },
+  }),
+
+  /** Salir del calendario (miembro, no owner) */
+  leaveCalendar: defineAction({
+    accept: 'form',
+    input: z.object({
+      calendarId: z.string(),
+    }),
+    handler: async (input, context) => {
+      const user = context.locals.user
+      if (!user) throw new ActionError({ code: 'UNAUTHORIZED', message: 'Inicia sesión.' })
+
+      const db = createClient(env.DB)
+
+      // Verificar que es miembro
+      const member = await db
+        .select({ id: calendarMembers.id, userId: calendarMembers.userId })
+        .from(calendarMembers)
+        .where(
+          and(
+            eq(calendarMembers.calendarId, input.calendarId),
+            eq(calendarMembers.userId, user.id),
+          ),
+        )
+        .get()
+
+      if (!member) {
+        throw new ActionError({ code: 'FORBIDDEN', message: 'No eres miembro de este calendario.' })
+      }
+
+      // Verificar que NO es el owner
+      const calendar = await db
+        .select({ ownerId: calendars.ownerId })
+        .from(calendars)
+        .where(eq(calendars.id, input.calendarId))
+        .get()
+
+      if (calendar?.ownerId === user.id) {
+        throw new ActionError({
+          code: 'FORBIDDEN',
+          message: 'El dueño no puede abandonar el calendario. Elimínalo si quieres salir.',
+        })
+      }
+
+      await db.delete(calendarMembers).where(eq(calendarMembers.id, member.id))
+
+      return { success: true }
+    },
+  }),
+
+  /** Transferir ownership al partner */
+  transferOwnership: defineAction({
+    accept: 'form',
+    input: z.object({
+      calendarId: z.string(),
+      newOwnerId: z.string(),
+    }),
+    handler: async (input, context) => {
+      const user = context.locals.user
+      if (!user) throw new ActionError({ code: 'UNAUTHORIZED', message: 'Inicia sesión.' })
+
+      await requireCalendarOwner(user.id, input.calendarId)
+
+      if (input.newOwnerId === user.id) {
+        throw new ActionError({
+          code: 'BAD_REQUEST',
+          message: 'Ya eres el dueño del calendario.',
+        })
+      }
+
+      const db = createClient(env.DB)
+
+      // Verificar que el nuevo dueño es miembro del calendario
+      const newOwnerMember = await db
+        .select({ id: calendarMembers.id })
+        .from(calendarMembers)
+        .where(
+          and(
+            eq(calendarMembers.calendarId, input.calendarId),
+            eq(calendarMembers.userId, input.newOwnerId),
+          ),
+        )
+        .get()
+
+      if (!newOwnerMember) {
+        throw new ActionError({
+          code: 'NOT_FOUND',
+          message: 'El usuario no es miembro de este calendario.',
+        })
+      }
+
+      await db
+        .update(calendars)
+        .set({ ownerId: input.newOwnerId, updatedAt: new Date() })
+        .where(eq(calendars.id, input.calendarId))
 
       return { success: true }
     },

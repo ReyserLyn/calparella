@@ -12,6 +12,7 @@ const RESERVED_SLUGS = new Set([
   'invitaciones',
   'invitacion',
   'calendario',
+  'configuracion',
   'api',
   '404',
   'favicon',
@@ -19,6 +20,33 @@ const RESERVED_SLUGS = new Set([
   'sitemap',
   'index',
 ])
+
+export const updateCalendarSchema = z.object({
+  calendarId: z.string().min(1),
+  name: z
+    .string()
+    .trim()
+    .min(2, { error: 'El nombre debe tener al menos 2 caracteres.' })
+    .max(100, { error: 'El nombre es demasiado largo.' }),
+  slug: z
+    .string()
+    .trim()
+    .min(3, { error: 'El slug debe tener al menos 3 caracteres.' })
+    .max(50, { error: 'El slug es demasiado largo.' })
+    .regex(/^[a-z0-9-]+$/, {
+      error: 'Solo letras minúsculas, números y guiones.',
+    })
+    .refine((val) => !RESERVED_SLUGS.has(val), {
+      error: 'Ese slug no está disponible. Elige otro.',
+    }),
+  isPublic: z.coerce.boolean().optional().default(false),
+  description: z
+    .string()
+    .trim()
+    .max(200, { error: 'La descripción no puede superar 200 caracteres.' })
+    .optional(),
+  updateSlugFromName: z.coerce.boolean().optional().default(false),
+})
 
 export const createCalendarSchema = z.object({
   name: z

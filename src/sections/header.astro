@@ -149,9 +149,13 @@ const successIconSvg = `<svg viewBox='0 0 24 24' width='14' height='14' fill='no
                   <Icon data={UserIcon} size={14} />
                   Editar perfil
                 </DropdownMenuItem>
-                <DropdownMenuItem disabled>
-                  <Icon data={Settings01Icon} size={14} />
-                  Configuración
+                <DropdownMenuItem class="p-0">
+                  <a
+                    href="/configuracion"
+                    class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5"
+                  >
+                    <Icon data={Settings01Icon} size={14} /> Configuracion
+                  </a>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
 
